@@ -1,3 +1,5 @@
+mod scanner;
+use scanner::*;
 mod error;
 use error::*;
 mod token_type;
@@ -53,7 +55,7 @@ fn run_prompt() {
 }
 
 fn run(source: String) -> Result<(), LoxError> {
-    let scanner = Scanner { source };
+    let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens()?;
     
     for token in tokens {
