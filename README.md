@@ -1,2 +1,2 @@
 # lox-ast
-AST version of Lox in Rust.
+test. AST version of Lox in Rust.
