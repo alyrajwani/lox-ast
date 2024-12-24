@@ -39,11 +39,10 @@ impl Scanner {
         }
 
         self.tokens.push(Token::eof(self.line));
-        
-        if let Some(e) = had_error {
-            Err(e)
-        } else {
-            Ok(&self.tokens)
+    
+        match had_error {
+            Some(e) => Err(e),
+            None => Ok(&self.tokens),
         }
     }
 
@@ -106,6 +105,8 @@ impl Scanner {
                             break;
                         }
                     }
+                } else if self.is_match('*') {
+                   self.block_comment()?; 
                 } else {
                    self.add_token(TokenType::Slash);
                 };
@@ -269,5 +270,39 @@ impl Scanner {
         } else {
             self.add_token(TokenType::Identifier)
         }
+    }
+    
+    fn block_comment(&mut self) -> Result<(), LoxError> {
+        let mut nest_count: u8 = 1; 
+        while let Some(ch) = self.peek() {
+            match ch {
+                '\n' => {
+                    self.line += 1;
+                }
+                '/' if self.peek_next() == Some('*') => {
+                    nest_count += 1;
+                    self.advance();
+                }
+                '*' if self.peek_next() == Some('/') => {
+                    nest_count -= 1;
+                    if nest_count == 0 {
+                        break;
+                    }
+                    self.advance();
+                }
+                _ => {}
+            }
+            self.advance();
+        }
+        
+        if self.is_at_end() {
+            return Err(LoxError::error(
+                self.line,
+                "Unterminated block comment.".to_string()
+            ));
+        }
+        self.advance();
+        self.advance();
+        Ok(())
     }
 }
