@@ -7,6 +7,9 @@ all: check clean run
 
 default: help
 
+build: 
+	@echo "> Building expr.rs..."
+	@cargo build
 clean:
 	@echo "> Cleaning build directory..."
 	@rm -rf target/*
@@ -22,5 +25,5 @@ run:
 	@clear
 	@cargo run
 help:
-	@echo "> Usage: \"make [clean] [check] [compile] [run] [all]\""
+	@echo "> Usage: \"make <build> <clean> <check> <compile> <run> <all>\""
 
