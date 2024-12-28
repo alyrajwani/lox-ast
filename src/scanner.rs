@@ -1,7 +1,5 @@
-use crate::token;
-use crate::token::Token;
+use crate::token::*;
 use crate::token_type::*;
-use crate::token::Object;
 use crate::error::*;
 
 pub struct Scanner {
@@ -30,7 +28,7 @@ impl Scanner {
             self.start = self.current;
             match self.scan_token() {
                 Ok(_) => {},
-                Err(mut e) => {
+                Err(e) => {
                     e.report("".to_string());
                     had_error = Some(e);
                 }    
@@ -235,7 +233,7 @@ impl Scanner {
         self.advance();
         
         let value: String = self.source[self.start + 1 .. self.current - 1].iter().collect();
-        self.add_token_object(TokenType::String, Some(token::Object::Str(value)));
+        self.add_token_object(TokenType::String, Some(Object::Str(value)));
         
         Ok(())
     }
@@ -253,9 +251,9 @@ impl Scanner {
             }
         }
 
-        let value: String = self.source[self.start + 1 .. self.current - 1].iter().collect();
+        let value: String = self.source[self.start .. self.current].iter().collect();
         let num: f64 = value.parse::<f64>().unwrap();
-        self.add_token_object(TokenType::Number, Some(token::Object::Num(num)));
+        self.add_token_object(TokenType::Number, Some(Object::Num(num)));
     }
     
     fn identifier(&mut self) {

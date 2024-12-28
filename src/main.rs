@@ -27,7 +27,7 @@ pub fn main() {
 	}
 }
 
-fn run_file(path: &String) -> io::Result<()> {
+fn run_file(path: &str) -> io::Result<()> {
     let buf = std::fs::read_to_string(path)?;
     match run(buf) {
         Ok(_) => {},
@@ -58,8 +58,8 @@ fn run_prompt() {
 		} else {
 			break;
        	}
-    print!("> ");
-    let _ = stdout().flush();
+        print!("> ");
+        let _ = stdout().flush();
 	}
 }
 
