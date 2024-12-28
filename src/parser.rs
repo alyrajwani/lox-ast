@@ -1,3 +1,4 @@
+// imports
 use crate::error::*;
 use crate::expr::*;
 use crate::token::*;
@@ -25,6 +26,7 @@ impl<'a> Parser<'a> {
     } 
 
     fn equality(&mut self) -> Result<Expr, LoxError> {
+        // equality => comparison ( ( != | == ) comparison )*
         let mut expr  = self.comparison()?;
 
         while self.is_match(&[TokenType::BangEqual, TokenType::EqualEqual]) {
@@ -40,6 +42,7 @@ impl<'a> Parser<'a> {
     }
 
     fn comparison(&mut self) -> Result<Expr, LoxError> {
+        // comparison => term ( ( > | >= | < | <= ) term )*
         let mut expr = self.term()?;
         
         while self.is_match(&[TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual]) {
@@ -55,6 +58,7 @@ impl<'a> Parser<'a> {
     }
 
     fn term(&mut self) -> Result<Expr, LoxError> {
+        // term => factor ( ( - | + ) factor )*
         let mut expr = self.factor()?;
 
         while self.is_match(&[TokenType::Minus, TokenType::Plus]) {
@@ -70,6 +74,7 @@ impl<'a> Parser<'a> {
     }
 
     fn factor(&mut self) -> Result<Expr, LoxError> {
+        // factor => unary ( ( * | \ ) unary )*
         let mut expr = self.unary()?;
         
         while self.is_match(&[TokenType::Slash, TokenType::Star]) {
@@ -85,6 +90,8 @@ impl<'a> Parser<'a> {
     }
 
     fn unary(&mut self) -> Result<Expr, LoxError> {
+        // unary => ( - | ! ) unary 
+        //       |  primary
         if self.is_match(&[TokenType::Bang, TokenType::Minus]) {
             let operator = self.previous().duplicate();
             let right = self.unary()?;
@@ -97,6 +104,7 @@ impl<'a> Parser<'a> {
     }
 
     fn primary(&mut self) -> Result<Expr, LoxError> {
+        // primary => NUMBER | STRING | true | false | nil | ( expression ) 
         if self.is_match(&[TokenType::False]) {
             return Ok(Expr::Literal(LiteralExpr { value: Some(Object::False) } ));
         }

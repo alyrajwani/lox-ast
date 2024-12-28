@@ -1,3 +1,4 @@
+// imports 
 use crate::token::*;
 use crate::token_type::*;
 use crate::error::*;
@@ -231,7 +232,8 @@ impl Scanner {
             ));
         }
         self.advance();
-        
+       
+        // Ignore quotes when making string object 
         let value: String = self.source[self.start + 1 .. self.current - 1].iter().collect();
         self.add_token_object(TokenType::String, Some(Object::Str(value)));
         
@@ -251,6 +253,7 @@ impl Scanner {
             }
         }
 
+        // Parse string type into f64 when making num object
         let value: String = self.source[self.start .. self.current].iter().collect();
         let num: f64 = value.parse::<f64>().unwrap();
         self.add_token_object(TokenType::Number, Some(Object::Num(num)));

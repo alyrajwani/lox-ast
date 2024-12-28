@@ -1,3 +1,4 @@
+// imports 
 use crate::token_type::*;
 use crate::token::*;
 
@@ -11,18 +12,21 @@ pub struct LoxError {
 
 impl LoxError {
     pub fn error(line: usize, message: String) -> LoxError {
+        // scanning error; tokens don't exist at this point
         let err = LoxError { token: None, line, message };
         err.report("".to_string());
         err        
     }   
 
     pub fn parse_error(token: &Token, message: String) -> LoxError {
+        // parsing error; cite the incorrect token in error message
         let err = LoxError { token: Some(token.duplicate()), line: token.line, message };
         err.report("".to_string());
         err
     }
 
     pub fn report(&self, loc: String) {
+        // print the appropriate error message
         if let Some(token) = &self.token {
             if token.is(TokenType::Eof) {
                 eprintln!("{} at end {}", token.line, self.message);
