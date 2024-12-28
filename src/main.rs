@@ -1,15 +1,18 @@
-use std::io::{self, BufRead, BufReader, Read, Write, stdout};
-use std::fs::File;
+use std::io::{self, BufRead, Write, stdout};
 use std::env::args;
 
 mod scanner;
 mod error; 
 mod token_type;
 mod token;
+mod parser;
+mod expr;
+mod ast_printer;
 
 use scanner::*;
 use error::*;
-
+use parser::*;
+use ast_printer::*;
 
 pub fn main() {
 	let args: Vec<String> = args().collect();
@@ -63,11 +66,15 @@ fn run_prompt() {
 fn run(source: String) -> Result<(), LoxError> {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens()?;
-    
-    for token in tokens {
-        println!("{:?}", token);
-    }
+    let mut parser = Parser::new(tokens);
 
-    Ok(())
+    match parser.parse() {
+        None => {}
+        Some(expr) => {
+            let printer = AstPrinter {};
+            println!("AST Printer: \n{}", printer.print(&expr)?);
+        }
+    }
+    Ok(())   
 }   
 
