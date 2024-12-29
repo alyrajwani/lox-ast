@@ -1,4 +1,3 @@
-// imports
 use crate::error::*;
 use crate::expr::*;
 use crate::token::*;
@@ -106,10 +105,10 @@ impl<'a> Parser<'a> {
     fn primary(&mut self) -> Result<Expr, LoxError> {
         // primary => NUMBER | STRING | true | false | nil | ( expression ) 
         if self.is_match(&[TokenType::False]) {
-            return Ok(Expr::Literal(LiteralExpr { value: Some(Object::False) } ));
+            return Ok(Expr::Literal(LiteralExpr { value: Some(Object::Bool(false)) } ));
         }
         if self.is_match(&[TokenType::True]) {
-            return Ok(Expr::Literal(LiteralExpr { value: Some(Object::True) } ));
+            return Ok(Expr::Literal(LiteralExpr { value: Some(Object::Bool(true)) } ));
         }
         if self.is_match(&[TokenType::Nil]) {
             return Ok(Expr::Literal(LiteralExpr { value: Some(Object::Nil) } ));

@@ -1,4 +1,3 @@
-// imports 
 use crate::token_type::*;
 use crate::token::*;
 
@@ -20,6 +19,13 @@ impl LoxError {
 
     pub fn parse_error(token: &Token, message: String) -> LoxError {
         // parsing error; cite the incorrect token in error message
+        let err = LoxError { token: Some(token.duplicate()), line: token.line, message };
+        err.report("".to_string());
+        err
+    }
+
+    pub fn runtime_error(token: &Token, message: String) -> LoxError {
+        // runtime error; cite in correct expression in error message
         let err = LoxError { token: Some(token.duplicate()), line: token.line, message };
         err.report("".to_string());
         err

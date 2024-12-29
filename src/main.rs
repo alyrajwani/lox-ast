@@ -1,4 +1,3 @@
-// imports
 use std::io::{self, BufRead, Write, stdout};
 use std::env::args;
 
@@ -9,6 +8,7 @@ mod token;
 mod parser;
 mod expr;
 mod ast_printer;
+mod interpreter;
 
 use scanner::*;
 use error::*;

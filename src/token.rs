@@ -1,15 +1,15 @@
-// imports
 use crate::token_type::*;
 use std::fmt;
+use std::ops::*;
+use std::cmp::*;
 
-
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Object {
     Num(f64),
     Str(String),
+    Bool(bool),
     Nil,
-    True, 
-    False,
+    ClassCastException,
 }
 
 impl fmt::Display for Object {
@@ -17,13 +17,67 @@ impl fmt::Display for Object {
         match self {
             Object::Num(n) => write!(f, "{n}"),
             Object::Str(s) => write!(f, "\"{s}\""),
+            Object::Bool(b) => if *b { write!(f, "true") } else { write!(f, "false") },
             Object::Nil => write!(f, "nil"),
-            Object::True => write!(f, "true"),
-            Object::False => write!(f, "false"),
+            Object::ClassCastException => panic!("Do not print upon class cast exception error.")
         }
     }
 }
 
+impl Sub for Object {
+    type Output = Object;
+
+    fn sub(self, other: Self) -> Object {
+        match (self, other) {
+            (Object::Num(left), Object::Num(right)) => Object::Num(left - right),
+            _ => Object::ClassCastException,
+        }
+    }
+}
+
+impl Div for Object {
+    type Output = Object;
+    
+    fn div(self, other: Self) -> Object {
+        match (self, other) {
+            (Object::Num(left), Object::Num(right)) => Object::Num(left / right),
+            _ => Object::ClassCastException,
+        }
+    }
+}
+
+impl Mul for Object {
+    type Output = Object;
+
+    fn mul(self, other: Self) -> Object {
+        match (self, other) {
+            (Object::Num(left), Object::Num(right)) => Object::Num(left * right),
+            _ => Object::ClassCastException,
+        }
+    }
+}
+
+impl Add for Object {
+    type Output = Object;
+
+    fn add(self, other: Self) -> Object {
+        match (self, other) {
+            (Object::Num(left), Object::Num(right)) => Object::Num(left + right),
+            (Object::Str(left), Object::Str(right)) => Object::Str(format!("{}{}", left, right)),
+            _ => Object::ClassCastException,
+        }
+    } 
+}
+
+impl PartialOrd for Object {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Object::Nil, o) => { if o == &Object::Nil { Some(Ordering::Equal) } else { None } },
+            (Object::Num(left), Object::Num(right)) => left.partial_cmp(right),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Token {
