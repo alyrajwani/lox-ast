@@ -79,6 +79,38 @@ impl PartialOrd for Object {
     }
 }
 
+impl Object {
+    pub fn compare(left: Object, operator: Token, right: Object) -> Object {
+        if !Self::are_num_objects(left.clone(), right.clone()) {
+            return Object::ClassCastException;
+        } else {
+            let first = Self::deconstruct_num_object(left).unwrap();
+            let second = Self::deconstruct_num_object(right).unwrap();
+            match operator.ttype {
+                TokenType::Greater => Object::Bool(first > second), 
+                TokenType::GreaterEqual => Object::Bool(first >= second),
+                TokenType::Less => Object::Bool(first < second),
+                TokenType::LessEqual => Object::Bool(first <= second),
+                _ => Object::ClassCastException, 
+            }
+        }
+    }
+
+    fn are_num_objects(left: Object, right: Object) -> bool {
+        match (left, right) {
+            (Object::Num(_), Object::Num(_)) => { return true; }
+            (_, _) => { return false; }
+        }
+    }
+    
+    
+    fn deconstruct_num_object(obj: Object) -> Option<f64> {
+        match obj {
+            Object::Num(n) => Some(n),
+            _ =>  None, 
+        }
+    }
+}
 #[derive(Debug, Clone)]
 pub struct Token {
     ttype: TokenType,
