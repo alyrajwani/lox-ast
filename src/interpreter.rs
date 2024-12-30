@@ -29,19 +29,18 @@ impl ExprVisitor<Object> for Interpreter {
             TokenType::LessEqual => Object::compare(left, expr.operator.clone(), right),
             TokenType::BangEqual => match self.is_equal(&left, &right) {
                     Ok(b) => Object::Bool(!b),
-                    Err(_) => Object::ClassCastException,
+                    Err(e) => e,
                 }
             TokenType::EqualEqual => match self.is_equal(&left, &right) {
                     Ok(b) => Object::Bool(b),
-                    Err(_) => Object::ClassCastException,
+                    Err(e) => e,
                 }
-            _ => Object::ClassCastException,
+            _ => Object::ErrorMessage("Invalid operator.".to_string()),
         };
 
-        if result == Object::ClassCastException {
-            Err(LoxError::runtime_error(&expr.operator, "Illegal expression.".to_string()))
-        } else {
-            Ok(result)
+        match result {
+            Object::ErrorMessage(s) => Err(LoxError::runtime_error(&expr.operator, s)),
+            _ => Ok(result),
         }
     }
     
@@ -50,18 +49,17 @@ impl ExprVisitor<Object> for Interpreter {
         let result = match expr.operator.token_type() {
             TokenType::Minus => match right {
                 Object::Num(n) => Object::Num(-n),
-                _ => Object::ClassCastException
+                _ => Object::ErrorMessage("Operand must be number.".to_string())
             },
             TokenType::Bang => {
                 Object::Bool(!self.is_truthy(&right))
             }, 
-            _ => Object::ClassCastException,
+            _ => Object::ErrorMessage("Invalid operator.".to_string()),
         };
 
-        if result == Object::ClassCastException {
-            Err(LoxError::runtime_error(&expr.operator, "Illegal expression.".to_string()))
-        } else {
-            Ok(result)
+        match result {
+            Object::ErrorMessage(s) => Err(LoxError::runtime_error(&expr.operator, s)),
+            _ => Ok(result),
         }
     }
 }
@@ -80,7 +78,7 @@ impl Interpreter {
         }
     }
 
-    fn is_equal(&self, left: &Object, right: &Object) -> Result<bool, ()> {
+    fn is_equal(&self, left: &Object, right: &Object) -> Result<bool, Object> {
         // Nil is only equal to itself, otherwise equality requires same type
         match (left, right) {
             (Object::Nil, Object::Nil) => Ok(true),
@@ -88,7 +86,7 @@ impl Interpreter {
             (_, Object::Nil) => Ok(false),
             (Object::Num(x), Object::Num(y)) => Ok(x == y),
             (Object::Str(x), Object::Str(y)) => Ok(x == y),
-            _ => Err(()),
+            _ => Err(Object::ErrorMessage("Cannot compare objects of different types.".to_string())),
         }
     }
 

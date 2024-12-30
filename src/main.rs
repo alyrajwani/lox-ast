@@ -7,13 +7,11 @@ mod token_type;
 mod token;
 mod parser;
 mod expr;
-// mod ast_printer;
 mod interpreter;
 
 use scanner::*;
 use error::*;
 use parser::*;
-// use ast_printer::*;
 use interpreter::*;
 
 pub fn main() {
@@ -84,9 +82,6 @@ impl Lox {
             None => {}
             Some(expr) => {
                 self.interpreter.interpret(&expr);
-
-                // let printer = AstPrinter {};
-                // println!("AST Printer: \n{}", printer.print(&expr)?);
             }
         }
         Ok(())   

@@ -2,6 +2,7 @@ use crate::token_type::*;
 use std::fmt;
 use std::ops::*;
 use std::cmp::*;
+use std::iter;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -9,7 +10,7 @@ pub enum Object {
     Str(String),
     Bool(bool),
     Nil,
-    ClassCastException,
+    ErrorMessage(String),
 }
 
 impl fmt::Display for Object {
@@ -19,7 +20,7 @@ impl fmt::Display for Object {
             Object::Str(s) => write!(f, "\"{s}\""),
             Object::Bool(b) => if *b { write!(f, "true") } else { write!(f, "false") },
             Object::Nil => write!(f, "nil"),
-            Object::ClassCastException => panic!("Do not print upon class cast exception error.")
+            Object::ErrorMessage(_) => panic!("Do not print upon error.")
         }
     }
 }
@@ -30,7 +31,7 @@ impl Sub for Object {
     fn sub(self, other: Self) -> Object {
         match (self, other) {
             (Object::Num(left), Object::Num(right)) => Object::Num(left - right),
-            _ => Object::ClassCastException,
+            _ => Object::ErrorMessage("Operands must be numbers.".to_string()),
         }
     }
 }
@@ -40,8 +41,12 @@ impl Div for Object {
     
     fn div(self, other: Self) -> Object {
         match (self, other) {
-            (Object::Num(left), Object::Num(right)) => Object::Num(left / right),
-            _ => Object::ClassCastException,
+            (Object::Num(left), Object::Num(right)) => if right == 0.0 {
+                    Object::ErrorMessage("Cannot divide by zero.".to_string())
+                } else {
+                    Object::Num(left / right)
+                }
+            _ => Object::ErrorMessage("Operands must be numbers.".to_string()),
         }
     }
 }
@@ -52,7 +57,8 @@ impl Mul for Object {
     fn mul(self, other: Self) -> Object {
         match (self, other) {
             (Object::Num(left), Object::Num(right)) => Object::Num(left * right),
-            _ => Object::ClassCastException,
+            (Object::Str(s), Object::Num(n)) => Object::Str(iter::repeat(s).take(n as usize).collect()),
+            _ => Object::ErrorMessage("Operands must be numbers or a string and a number.".to_string()),
         }
     }
 }
@@ -66,7 +72,7 @@ impl Add for Object {
             (Object::Str(left), Object::Str(right)) => Object::Str(format!("{}{}", left, right)),
             (Object::Str(left), Object::Num(right)) => Object::Str(format!("{}{}", left, right)),
             (Object::Num(left), Object::Str(right)) => Object::Str(format!("{}{}", left, right)),
-            _ => Object::ClassCastException,
+            _ => Object::ErrorMessage("Operants must be numbers or strings.".to_string()),
         }
     } 
 }
@@ -84,7 +90,7 @@ impl PartialOrd for Object {
 impl Object {
     pub fn compare(left: Object, operator: Token, right: Object) -> Object {
         if !Self::are_num_objects(left.clone(), right.clone()) {
-            return Object::ClassCastException;
+            return Object::ErrorMessage("Operands must be numbers.".to_string());
         } else {
             let first = Self::deconstruct_num_object(left).unwrap();
             let second = Self::deconstruct_num_object(right).unwrap();
@@ -93,7 +99,7 @@ impl Object {
                 TokenType::GreaterEqual => Object::Bool(first >= second),
                 TokenType::Less => Object::Bool(first < second),
                 TokenType::LessEqual => Object::Bool(first <= second),
-                _ => Object::ClassCastException, 
+                _ => Object::ErrorMessage("Invalid comparator".to_string()), 
             }
         }
     }
