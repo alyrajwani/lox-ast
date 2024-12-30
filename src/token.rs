@@ -64,6 +64,8 @@ impl Add for Object {
         match (self, other) {
             (Object::Num(left), Object::Num(right)) => Object::Num(left + right),
             (Object::Str(left), Object::Str(right)) => Object::Str(format!("{}{}", left, right)),
+            (Object::Str(left), Object::Num(right)) => Object::Str(format!("{}{}", left, right)),
+            (Object::Num(left), Object::Str(right)) => Object::Str(format!("{}{}", left, right)),
             _ => Object::ClassCastException,
         }
     } 

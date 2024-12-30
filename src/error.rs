@@ -27,7 +27,7 @@ impl LoxError {
     pub fn runtime_error(token: &Token, message: String) -> LoxError {
         // runtime error; cite in correct expression in error message
         let err = LoxError { token: Some(token.duplicate()), line: token.line, message };
-        err.report("".to_string());
+        // err.report("".to_string());
         err
     }
 
@@ -35,9 +35,9 @@ impl LoxError {
         // print the appropriate error message
         if let Some(token) = &self.token {
             if token.is(TokenType::Eof) {
-                eprintln!("{} at end {}", token.line, self.message);
+                eprintln!("[line {}] at end: {}", token.line, self.message);
             } else {
-                eprintln!("{} at '{}' {}", token.line, token.as_string(), self.message);
+                eprintln!("[line {}] at '{}': {}", token.line, token.as_string(), self.message);
             }
         } else {
             eprintln!("[line {}] Error{}: {}", self.line, loc, self.message);

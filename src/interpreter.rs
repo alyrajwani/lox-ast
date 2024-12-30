@@ -81,20 +81,27 @@ impl Interpreter {
     }
 
     fn is_equal(&self, left: &Object, right: &Object) -> Result<bool, ()> {
+        // Nil is only equal to itself, otherwise equality requires same type
         match (left, right) {
             (Object::Nil, Object::Nil) => Ok(true),
-            (Object::Nil, _) => Ok(true),
-            (_, Object::Nil) => Ok(true),
+            (Object::Nil, _) => Ok(false),
+            (_, Object::Nil) => Ok(false),
             (Object::Num(x), Object::Num(y)) => Ok(x == y),
             (Object::Str(x), Object::Str(y)) => Ok(x == y),
             _ => Err(()),
         }
     }
 
-    fn interpret(&self, expr: &Expr) {
+    pub fn interpret(&self, expr: &Expr) -> bool {
         match self.evaluate(expr) {
-            Ok(val) => println!("{val}"),
-            Err(e) => e.report("".to_string()),
+            Ok(val) => {
+                println!("{val}");
+                true
+            },
+            Err(e) => {
+                e.report("".to_string());
+                false
+            }
         }
     }
 }
