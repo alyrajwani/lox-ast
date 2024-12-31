@@ -1,7 +1,6 @@
 use crate::token_type::*;
 use crate::token::*;
 
-
 #[derive(Debug)]
 pub struct LoxError {
     token: Option<Token>,
@@ -10,24 +9,21 @@ pub struct LoxError {
 }
 
 impl LoxError {
-    pub fn error(line: usize, message: String) -> LoxError {
+    pub fn error(line: usize, message: &str) -> LoxError {
         // scanning error; tokens don't exist at this point
-        let err = LoxError { token: None, line, message };
-        err.report("".to_string());
+        let err = LoxError { token: None, line, message: message.to_string() };
         err        
     }   
 
-    pub fn parse_error(token: &Token, message: String) -> LoxError {
+    pub fn parse_error(token: &Token, message: &str) -> LoxError {
         // parsing error; cite the incorrect token in error message
-        let err = LoxError { token: Some(token.duplicate()), line: token.line, message };
-        err.report("".to_string());
+        let err = LoxError { token: Some(token.duplicate()), line: token.line, message: message.to_string() };
         err
     }
 
-    pub fn runtime_error(token: &Token, message: String) -> LoxError {
+    pub fn runtime_error(token: &Token, message: &str) -> LoxError {
         // runtime error; cite in correct expression in error message
-        let err = LoxError { token: Some(token.duplicate()), line: token.line, message };
-        // err.report("".to_string());
+        let err = LoxError { token: Some(token.duplicate()), line: token.line, message: message.to_string() };
         err
     }
 

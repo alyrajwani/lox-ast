@@ -7,7 +7,9 @@ mod token_type;
 mod token;
 mod parser;
 mod expr;
+mod stmt;
 mod interpreter;
+mod environment;
 
 use scanner::*;
 use error::*;
@@ -34,17 +36,13 @@ struct Lox {
 
 impl Lox {
     pub fn new() -> Lox {
-        Lox { interpreter: Interpreter {} }
+        Lox { interpreter: Interpreter::new() }
     }
     
     pub fn run_file(&mut self, path: &str) -> io::Result<()> {
         let buf = std::fs::read_to_string(path)?;
-        match self.run(buf) {
-            Ok(_) => {},
-            Err(_) => {
-                // Ignore; error was already reported in scan_token
-                std::process::exit(65);
-            }
+        if self.run(buf).is_err() {
+            std::process::exit(65);
         }
 
         Ok(())
@@ -59,12 +57,7 @@ impl Lox {
 			    if line.is_empty() {
 				    break;
 			    }
-			    match self.run(line) {
-                    Ok(_) => {},
-                    Err(_) => {
-                        // Ignore; error was already reported in scan_token
-                    }
-                }
+                let _ = self.run(line);    
 		    } else {
 			    break;
        	    }
@@ -77,14 +70,12 @@ impl Lox {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens()?;
         let mut parser = Parser::new(tokens);
-
-        match parser.parse() {
-            None => {}
-            Some(expr) => {
-                self.interpreter.interpret(&expr);
-            }
+        let statements = parser.parse()?;
+        if self.interpreter.interpret(&statements) {
+            Ok(())
+        } else {
+            Err(LoxError::error(0, ""))
         }
-        Ok(())   
     }
 }   
 

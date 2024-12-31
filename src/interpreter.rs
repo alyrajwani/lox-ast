@@ -2,8 +2,36 @@ use crate::expr::*;
 use crate::token::*;
 use crate::error::*;
 use crate::token_type::*;
+use crate::stmt::*;
+use crate::environment::*;
+use std::cell::RefCell;
 
-pub struct Interpreter;
+pub struct Interpreter {
+    environment: RefCell<Environment>,
+}
+
+impl StmtVisitor<()> for Interpreter {
+    fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxError> {
+        self.evaluate(&stmt.expression)?;
+        Ok(())
+    }
+
+    fn visit_print_stmt(&self, stmt: &PrintStmt) -> Result<(), LoxError> {
+        let value = self.evaluate(&stmt.expression)?;
+        println!("{value}");
+        Ok(())
+    }
+
+    fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxError> {
+        let value = if let Some(initializer) = &stmt.initializer {
+            self.evaluate(&initializer)?
+        } else {
+            Object::Nil
+        };
+        self.environment.borrow_mut().define(stmt.name.as_string(), value);
+        Ok(())
+    }
+}
 
 impl ExprVisitor<Object> for Interpreter {
     fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, LoxError> {
@@ -11,7 +39,7 @@ impl ExprVisitor<Object> for Interpreter {
     }
 
     fn visit_grouping_expr(&self, expr: &GroupingExpr) -> Result<Object, LoxError> {
-        Ok(self.evaluate(&expr.expression)?)
+        self.evaluate(&expr.expression)
     }
 
     fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<Object, LoxError> {
@@ -39,7 +67,7 @@ impl ExprVisitor<Object> for Interpreter {
         };
 
         match result {
-            Object::ErrorMessage(s) => Err(LoxError::runtime_error(&expr.operator, s)),
+            Object::ErrorMessage(s) => Err(LoxError::runtime_error(&expr.operator, &s)),
             _ => Ok(result),
         }
     }
@@ -58,15 +86,27 @@ impl ExprVisitor<Object> for Interpreter {
         };
 
         match result {
-            Object::ErrorMessage(s) => Err(LoxError::runtime_error(&expr.operator, s)),
+            Object::ErrorMessage(s) => Err(LoxError::runtime_error(&expr.operator, &s)),
             _ => Ok(result),
         }
+    }
+
+    fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxError> {
+        self.environment.borrow().get(&expr.name)
     }
 }
 
 impl Interpreter {
+    pub fn new() -> Interpreter {
+        Interpreter { environment: RefCell::new(Environment::new()) }
+    }
+
     fn evaluate(&self, expr: &Expr) -> Result<Object, LoxError> {
         expr.accept(self)
+    }
+
+    fn execute(&self, stmt: &Stmt) -> Result<(), LoxError> {
+        stmt.accept(self)
     }
 
     fn is_truthy(&self, object: &Object) -> bool {
@@ -86,21 +126,21 @@ impl Interpreter {
             (_, Object::Nil) => Ok(false),
             (Object::Num(x), Object::Num(y)) => Ok(x == y),
             (Object::Str(x), Object::Str(y)) => Ok(x == y),
+            (Object::Bool(x), Object::Bool(y)) => Ok(x == y),
             _ => Err(Object::ErrorMessage("Cannot compare objects of different types.".to_string())),
         }
     }
 
-    pub fn interpret(&self, expr: &Expr) -> bool {
-        match self.evaluate(expr) {
-            Ok(val) => {
-                println!("{val}");
-                true
-            },
-            Err(e) => {
+    pub fn interpret(&self, statements: &[Stmt]) -> bool {
+        let mut success = false;
+        for stmt in statements {
+            if let Err(e) = self.execute(stmt) {
                 e.report("".to_string());
-                false
+                success = false;
+                break;
             }
         }
+        success
     }
 }
 
@@ -118,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_unary_minus() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let unary_expr = UnaryExpr {
             operator: Token::new(TokenType::Minus, "-".to_string(), None, 123),
             right: make_literal(Object::Num(123.0)),
@@ -130,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_unary_not() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let unary_expr = UnaryExpr {
             operator: Token::new(TokenType::Bang, "!".to_string(), None, 123),
             right: make_literal(Object::Bool(false)),
@@ -142,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_subtraction() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal(Object::Num(15.0)),
             operator: Token::new(TokenType::Minus, "-".to_string(), None, 123),
@@ -155,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_multiplication() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal(Object::Num(15.0)),
             operator: Token::new(TokenType::Star, "*".to_string(), None, 123),
@@ -168,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_division() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal(Object::Num(21.0)),
             operator: Token::new(TokenType::Slash, "/".to_string(), None, 123),
@@ -181,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_addition() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal(Object::Num(21.0)),
             operator: Token::new(TokenType::Plus, "+".to_string(), None, 123),
@@ -194,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_string_concatination() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal_string("hello, "),
             operator: Token::new(TokenType::Plus, "+".to_string(), None, 123),
@@ -207,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_arithmetic_error_for_subtration() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal(Object::Num(15.0)),
             operator: Token::new(TokenType::Minus, "-".to_string(), None, 123),
@@ -219,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_arithmetic_error_for_greater() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal(Object::Num(15.0)),
             operator: Token::new(TokenType::Greater, ">".to_string(), None, 123),
@@ -231,7 +271,7 @@ mod tests {
 
     fn run_comparison_test(tok: &Token, cmps: Vec<bool>) {
         let nums = vec![14.0, 15.0, 16.0];
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
 
         for (c, nums) in cmps.iter().zip(nums) {
             let binary_expr = BinaryExpr {
@@ -301,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_not_equals_string() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal_string("hello"),
             operator: Token::new(TokenType::EqualEqual, "==".to_string(), None, 123),
@@ -314,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_equals_string() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal_string("world"),
             operator: Token::new(TokenType::EqualEqual, "==".to_string(), None, 123),
@@ -327,7 +367,7 @@ mod tests {
 
     #[test]
     fn test_equals_nil() {
-        let terp = Interpreter {};
+        let terp = Interpreter::new();
         let binary_expr = BinaryExpr {
             left: make_literal(Object::Nil),
             operator: Token::new(TokenType::EqualEqual, "==".to_string(), None, 123),

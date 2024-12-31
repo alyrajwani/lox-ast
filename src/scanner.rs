@@ -1,4 +1,3 @@
-// imports 
 use crate::token::*;
 use crate::token_type::*;
 use crate::error::*;
@@ -125,7 +124,7 @@ impl Scanner {
                 } else {
                     return Err(LoxError::error(
                         self.line,
-                        "Unexpected character.".to_string()
+                        "Unexpected character."
                     ));
                 };   
             }
@@ -228,7 +227,7 @@ impl Scanner {
         if self.is_at_end() {
             return Err(LoxError::error(
                 self.line,
-                "Unterminated string.".to_string()
+                "Unterminated string."
             ));
         }
         self.advance();
@@ -298,7 +297,7 @@ impl Scanner {
         if self.is_at_end() {
             return Err(LoxError::error(
                 self.line,
-                "Unterminated block comment.".to_string()
+                "Unterminated block comment."
             ));
         }
         self.advance();

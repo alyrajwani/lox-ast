@@ -17,7 +17,7 @@ impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Object::Num(n) => write!(f, "{n}"),
-            Object::Str(s) => write!(f, "\"{s}\""),
+            Object::Str(s) => write!(f, "{s}"),
             Object::Bool(b) => if *b { write!(f, "true") } else { write!(f, "false") },
             Object::Nil => write!(f, "nil"),
             Object::ErrorMessage(_) => panic!("Do not print upon error.")
