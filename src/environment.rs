@@ -1,6 +1,7 @@
-use std::collections::HashMap;
-use crate::token::*;
 use crate::error::*;
+use crate::token::*;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 
 pub struct Environment {
     values: HashMap<String, Object>,
@@ -8,16 +9,33 @@ pub struct Environment {
 
 impl Environment {
     pub fn new() -> Environment {
-        Environment { values: HashMap::new() }
+        Environment {
+            values: HashMap::new(),
+        }
     }
-    pub fn define(&mut self, name: &String, value: Object) {
+    pub fn define(&mut self, name: &str, value: Object) {
         self.values.insert(name.to_string(), value);
     }
 
     pub fn get(&self, name: &Token) -> Result<Object, LoxError> {
         match self.values.get(name.as_string()) {
             Some(val) => Ok(val.clone()),
-            None => Err(LoxError::runtime_error(&name, &format!("Undefined variable {}.", name.as_string()))),
+            None => Err(LoxError::runtime_error(
+                name,
+                &format!("Undefined variable '{}'.", name.as_string()),
+            )),
+        }
+    }
+
+    pub fn assign(&mut self, name: &Token, value: Object) -> Result<(), LoxError> {
+        if let Entry::Occupied(mut object) = self.values.entry(name.as_string().to_string()) {
+            object.insert(value);
+            Ok(())
+        } else {
+            Err(LoxError::runtime_error(
+                name,
+                &format!("Underfined variable '{}'.", name.as_string()),
+            ))
         }
     }
 }
@@ -66,5 +84,20 @@ mod tests {
         let three_tok = Token::new(TokenType::Identifier, "Three".to_string(), None, 0);
         assert!(e.get(&three_tok).is_err());
     }
-}
 
+    #[test]
+    fn error_when_assigning_to_undefined_variable() {
+        let mut e = Environment::new();
+        let four_tok = Token::new(TokenType::Identifier, "Four".to_string(), None, 0);
+        assert!(e.assign(&four_tok, Object::Nil).is_err());
+    }
+
+    #[test]
+    fn can_reassign_existing_variable() {
+        let mut e = Environment::new();
+        let four_tok = Token::new(TokenType::Identifier, "Four".to_string(), None, 0);
+        e.define(&"Four".to_string(), Object::Num(73.1));
+        assert!(e.assign(&four_tok, Object::Num(89.5)).is_ok());
+        assert_eq!(e.get(&four_tok).unwrap(), Object::Num(89.5));
+    }
+}

@@ -1,9 +1,9 @@
-use crate::expr::*;
-use crate::token::*;
-use crate::error::*;
-use crate::token_type::*;
-use crate::stmt::*;
 use crate::environment::*;
+use crate::error::*;
+use crate::expr::*;
+use crate::stmt::*;
+use crate::token::*;
+use crate::token_type::*;
 use std::cell::RefCell;
 
 pub struct Interpreter {
@@ -24,16 +24,26 @@ impl StmtVisitor<()> for Interpreter {
 
     fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxError> {
         let value = if let Some(initializer) = &stmt.initializer {
-            self.evaluate(&initializer)?
+            self.evaluate(initializer)?
         } else {
             Object::Nil
         };
-        self.environment.borrow_mut().define(stmt.name.as_string(), value);
+        self.environment
+            .borrow_mut()
+            .define(stmt.name.as_string(), value);
         Ok(())
     }
 }
 
 impl ExprVisitor<Object> for Interpreter {
+    fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxError> {
+        let value = self.evaluate(&expr.value)?;
+        self.environment
+            .borrow_mut()
+            .assign(&expr.name, value.clone())?;
+        Ok(value)
+    }
+
     fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, LoxError> {
         Ok(expr.value.clone().unwrap())
     }
@@ -49,20 +59,20 @@ impl ExprVisitor<Object> for Interpreter {
         let result = match expr.operator.token_type() {
             TokenType::Minus => left - right,
             TokenType::Slash => left / right,
-            TokenType::Star  => left * right,
-            TokenType::Plus  => left + right,
+            TokenType::Star => left * right,
+            TokenType::Plus => left + right,
             TokenType::Greater => Object::compare(left, expr.operator.clone(), right),
             TokenType::GreaterEqual => Object::compare(left, expr.operator.clone(), right),
             TokenType::Less => Object::compare(left, expr.operator.clone(), right),
             TokenType::LessEqual => Object::compare(left, expr.operator.clone(), right),
             TokenType::BangEqual => match self.is_equal(&left, &right) {
-                    Ok(b) => Object::Bool(!b),
-                    Err(e) => e,
-                }
+                Ok(b) => Object::Bool(!b),
+                Err(e) => e,
+            },
             TokenType::EqualEqual => match self.is_equal(&left, &right) {
-                    Ok(b) => Object::Bool(b),
-                    Err(e) => e,
-                }
+                Ok(b) => Object::Bool(b),
+                Err(e) => e,
+            },
             _ => Object::ErrorMessage("Invalid operator.".to_string()),
         };
 
@@ -71,17 +81,15 @@ impl ExprVisitor<Object> for Interpreter {
             _ => Ok(result),
         }
     }
-    
+
     fn visit_unary_expr(&self, expr: &UnaryExpr) -> Result<Object, LoxError> {
         let right = self.evaluate(&expr.right)?;
         let result = match expr.operator.token_type() {
             TokenType::Minus => match right {
                 Object::Num(n) => Object::Num(-n),
-                _ => Object::ErrorMessage("Operand must be number.".to_string())
+                _ => Object::ErrorMessage("Operand must be number.".to_string()),
             },
-            TokenType::Bang => {
-                Object::Bool(!self.is_truthy(&right))
-            }, 
+            TokenType::Bang => Object::Bool(!self.is_truthy(&right)),
             _ => Object::ErrorMessage("Invalid operator.".to_string()),
         };
 
@@ -98,7 +106,9 @@ impl ExprVisitor<Object> for Interpreter {
 
 impl Interpreter {
     pub fn new() -> Interpreter {
-        Interpreter { environment: RefCell::new(Environment::new()) }
+        Interpreter {
+            environment: RefCell::new(Environment::new()),
+        }
     }
 
     fn evaluate(&self, expr: &Expr) -> Result<Object, LoxError> {
@@ -111,11 +121,7 @@ impl Interpreter {
 
     fn is_truthy(&self, object: &Object) -> bool {
         // False/Nil are false, anything else is true
-        match object {
-            Object::Nil => false,
-            Object::Bool(false) => false,
-            _ => true,
-        }
+        !matches!(object, Object::Nil | Object::Bool(false))
     }
 
     fn is_equal(&self, left: &Object, right: &Object) -> Result<bool, Object> {
@@ -127,7 +133,9 @@ impl Interpreter {
             (Object::Num(x), Object::Num(y)) => Ok(x == y),
             (Object::Str(x), Object::Str(y)) => Ok(x == y),
             (Object::Bool(x), Object::Bool(y)) => Ok(x == y),
-            _ => Err(Object::ErrorMessage("Cannot compare objects of different types.".to_string())),
+            _ => Err(Object::ErrorMessage(
+                "Cannot compare objects of different types.".to_string(),
+            )),
         }
     }
 
