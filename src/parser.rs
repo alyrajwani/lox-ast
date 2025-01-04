@@ -50,13 +50,83 @@ impl Parser<'_> {
     }
 
     fn statement(&mut self) -> Result<Stmt, LoxError> {
+        if self.is_match(&[TokenType::For]) {
+            return self.for_statement();
+        }
+        if self.is_match(&[TokenType::If]) {
+            return self.if_statement();
+        }
         if self.is_match(&[TokenType::Print]) {
             return self.print_statement();
-        } 
+        }
+        if self.is_match(&[TokenType::While]) {
+            return self.while_statement();
+        }
         if self.is_match(&[TokenType::LeftBrace]) {
             return Ok(Stmt::Block(BlockStmt { statements: self.block()?, }));
         }
         self.expression_statement()
+    }
+
+    fn for_statement(&mut self) -> Result<Stmt, LoxError> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.".to_string())?;
+        let initializer = if self.is_match(&[TokenType::Semicolon]) {
+            None
+        } else if self.is_match(&[TokenType::Var]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let mut condition = if !self.check(TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        self.consume(TokenType::Semicolon, "Expect ';' after for clauses.".to_string())?;
+
+        let increment = if !self.check(TokenType::RightParen) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        self.consume(TokenType::RightParen, "Expect ')' after for clauses.".to_string())?;
+
+        let mut body = self.statement()?;
+        
+        if let Some(incr) = increment {
+            body = Stmt::Block(BlockStmt { statements: vec![body, 
+                Stmt::Expression(ExpressionStmt { expression: incr })] 
+            });
+        }
+
+        if condition.is_none() {
+            condition = Some(Expr::Literal(LiteralExpr { value: Some(Object::Bool(true)) }));
+        }
+
+        body = Stmt::While(WhileStmt { condition: condition.unwrap(), body: Box::new(body) });
+
+        if let Some(init) = initializer {
+            body = Stmt::Block(BlockStmt { statements: vec![init, body] });
+        }
+        Ok(body)
+    }
+
+    fn if_statement(&mut self) -> Result<Stmt, LoxError> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.".to_string())?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after condition.".to_string())?;
+
+        let then_branch = Box::new(self.statement()?);
+        let else_branch = if self.is_match(&[TokenType::Else]) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+
+        Ok(Stmt::If(IfStmt { condition, then_branch, else_branch }))
     }
 
     fn print_statement(&mut self) -> Result<Stmt, LoxError> {
@@ -80,6 +150,15 @@ impl Parser<'_> {
         Ok(Stmt::Var(VarStmt { name, initializer }))
     }
 
+    fn while_statement(&mut self) -> Result<Stmt, LoxError> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'while'.".to_string())?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after condition.".to_string())?;
+        let body = Box::new(self.statement()?);
+
+        Ok(Stmt::While(WhileStmt { condition, body }))
+    }
+
     fn expression_statement(&mut self) -> Result<Stmt, LoxError> {
         let expr = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
@@ -98,7 +177,7 @@ impl Parser<'_> {
     }
 
     fn assignment(&mut self) -> Result<Expr, LoxError> {
-        let expr = self.equality()?;
+        let expr = self.or()?;
 
         if self.is_match(&[TokenType::Equal]) {
             let equals = self.previous().duplicate();
@@ -116,6 +195,39 @@ impl Parser<'_> {
 
         Ok(expr)
     }
+
+    fn or(&mut self) -> Result<Expr, LoxError> {
+        let mut expr = self.and()?;
+
+        while self.is_match(&[TokenType::Or]) {
+            let operator = self.previous().duplicate();
+            let right = self.and()?;
+            expr = Expr::Logical(LogicalExpr { 
+                left: Box::new(expr), 
+                operator, 
+                right: Box::new(right), 
+            });
+        }
+
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Expr, LoxError> {
+        let mut expr = self.equality()?;
+
+        while self.is_match(&[TokenType::And]) {
+            let operator = self.previous().duplicate();
+            let right = self.equality()?;
+            expr = Expr::Logical(LogicalExpr { 
+                left: Box::new(expr), 
+                operator, 
+                right: Box::new(right), 
+            });
+        }
+
+        Ok(expr)
+    }
+
 
     fn equality(&mut self) -> Result<Expr, LoxError> {
         // equality => comparison ( ( != | == ) comparison )*
@@ -243,8 +355,9 @@ impl Parser<'_> {
                 expression: Box::new(expr),
             }));
         }
-
-        Err(LoxError::error(0, "Expect expression."))
+        
+        let peek = self.peek().duplicate();
+        Err(LoxError::parse_error(&peek, "Expect expression."))
     }
 
     fn consume(&mut self, ttype: TokenType, message: String) -> Result<Token, LoxError> {
