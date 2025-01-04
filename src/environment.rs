@@ -1,9 +1,9 @@
 use crate::error::*;
 use crate::token::*;
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 pub struct Environment {
     values: HashMap<String, Object>,
@@ -19,7 +19,10 @@ impl Environment {
     }
 
     pub fn new_with_enclosing(enclosing: Rc<RefCell<Environment>>) -> Environment {
-        Environment { values: HashMap::new(), enclosing: Some(enclosing) } 
+        Environment {
+            values: HashMap::new(),
+            enclosing: Some(enclosing),
+        }
     }
     pub fn define(&mut self, name: &str, value: Object) {
         self.values.insert(name.to_string(), value);
@@ -124,16 +127,18 @@ mod tests {
     #[test]
     fn can_read_from_enclosed_environment() {
         let e = Rc::new(RefCell::new(Environment::new()));
-        e.borrow_mut().define(&"Five".to_string(), Object::Num(77.8));
+        e.borrow_mut()
+            .define(&"Five".to_string(), Object::Num(77.8));
         let f = Environment::new_with_enclosing(Rc::clone(&e));
         let five_tok = Token::new(TokenType::Identifier, "Five".to_string(), None, 0);
-        assert_eq!(f.get(&five_tok).unwrap(), Object::Num(77.8)); 
+        assert_eq!(f.get(&five_tok).unwrap(), Object::Num(77.8));
     }
 
     #[test]
     fn can_assign_to_enclosed_environment() {
         let e = Rc::new(RefCell::new(Environment::new()));
-        e.borrow_mut().define(&"Five".to_string(), Object::Num(77.8));
+        e.borrow_mut()
+            .define(&"Five".to_string(), Object::Num(77.8));
         let mut f = Environment::new_with_enclosing(Rc::clone(&e));
         let five_tok = Token::new(TokenType::Identifier, "Five".to_string(), None, 0);
         assert!(f.assign(&five_tok, Object::Num(91.2)).is_ok());

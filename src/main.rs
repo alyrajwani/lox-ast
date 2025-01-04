@@ -75,7 +75,7 @@ impl Lox {
         let statements = parser.parse()?;
 
         if parser.success() {
-            self.interpreter.interpret(&statements); 
+            self.interpreter.interpret(&statements);
         }
         Ok(())
     }

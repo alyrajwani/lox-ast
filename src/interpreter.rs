@@ -15,7 +15,10 @@ pub struct Interpreter {
 impl StmtVisitor<()> for Interpreter {
     fn visit_break_stmt(&self, stmt: &BreakStmt) -> Result<(), LoxResult> {
         if *self.nest_level.borrow() == 0 {
-            Err(LoxResult::runtime_error(&stmt.token, "Cannot break outside scope of loop."))
+            Err(LoxResult::runtime_error(
+                &stmt.token,
+                "Cannot break outside scope of loop.",
+            ))
         } else {
             Err(LoxResult::Break)
         }
@@ -23,9 +26,9 @@ impl StmtVisitor<()> for Interpreter {
 
     fn visit_block_stmt(&self, stmt: &BlockStmt) -> Result<(), LoxResult> {
         let e = Environment::new_with_enclosing(self.environment.borrow().clone());
-        self.execute_block(&stmt.statements, e)  
+        self.execute_block(&stmt.statements, e)
     }
-    
+
     fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxResult> {
         self.evaluate(&stmt.expression)?;
         Ok(())
@@ -71,12 +74,30 @@ impl StmtVisitor<()> for Interpreter {
         }
 
         *self.nest_level.borrow_mut() -= 1;
-        
+
         Ok(())
     }
 }
 
 impl ExprVisitor<Object> for Interpreter {
+    fn visit_call_expr(&self, expr: &CallExpr) -> Result<Object, LoxResult> {
+        let callee = self.evaluate(&expr.callee)?;
+
+        let mut arguments = Vec::new();
+        for argument in &expr.arguments {
+            arguments.push(self.evaluate(argument)?);
+        }
+
+        if let Object::Function(function) = callee {
+            function.call(self, arguments)
+        } else {
+            Err(LoxResult::runtime_error(
+                &expr.paren,
+                "Can only call functions and classes.",
+            ))
+        }
+    }
+
     fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxResult> {
         let value = self.evaluate(&expr.value)?;
         self.environment
@@ -94,9 +115,9 @@ impl ExprVisitor<Object> for Interpreter {
         let left = self.evaluate(&expr.left)?;
 
         if expr.operator.token_type() == TokenType::Or {
-            if self.is_truthy(&left) { 
+            if self.is_truthy(&left) {
                 return Ok(left);
-            } 
+            }
         } else {
             if !self.is_truthy(&left) {
                 return Ok(left);
@@ -178,9 +199,15 @@ impl Interpreter {
         stmt.accept(self)
     }
 
-    fn execute_block(&self, statements: &[Stmt], environment: Environment) -> Result<(), LoxResult> {
+    fn execute_block(
+        &self,
+        statements: &[Stmt],
+        environment: Environment,
+    ) -> Result<(), LoxResult> {
         let previous = self.environment.replace(Rc::new(RefCell::new(environment)));
-        let result = statements.iter().try_for_each(|statement| self.execute(statement));
+        let result = statements
+            .iter()
+            .try_for_each(|statement| self.execute(statement));
         self.environment.replace(previous);
 
         result

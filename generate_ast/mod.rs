@@ -16,6 +16,7 @@ pub fn generate_ast(output_dir: &String) -> io::Result<()> {
         &[
             "Assign     : Token name, Box<Expr> value",
             "Binary     : Box<Expr> left, Token operator, Box<Expr> right",
+            "Call       : Rc<Expr> callee, Token paren, Vec<Expr> arguments",
             "Grouping   : Box<Expr> expression",
             "Literal    : Option<Object> value",
             "Logical    : Box<Expr> left, Token operator, Box<Expr> right",
@@ -52,6 +53,7 @@ fn define_ast(
     let mut file = File::create(path)?;
     let mut tree_types = Vec::new();
 
+    writeln!(file, "use std::rc::Rc;")?;
     for i in imports {
         writeln!(file, "use crate::{}::*;", i)?;
     }
