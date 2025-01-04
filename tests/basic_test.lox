@@ -5,3 +5,11 @@ print 2 + 1;
 var a = 5;
 var b = 3;
 print a + b;
+
+var a = 1;
+{
+  var a = a + 2;
+  print a;
+}
+
+print a;

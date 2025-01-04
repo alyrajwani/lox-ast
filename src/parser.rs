@@ -52,6 +52,9 @@ impl Parser<'_> {
     fn statement(&mut self) -> Result<Stmt, LoxError> {
         if self.is_match(&[TokenType::Print]) {
             return self.print_statement();
+        } 
+        if self.is_match(&[TokenType::LeftBrace]) {
+            return Ok(Stmt::Block(BlockStmt { statements: self.block()?, }));
         }
         self.expression_statement()
     }
@@ -81,6 +84,17 @@ impl Parser<'_> {
         let expr = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
         Ok(Stmt::Expression(ExpressionStmt { expression: expr }))
+    }
+
+    fn block(&mut self) -> Result<Vec<Stmt>, LoxError> {
+        let mut statements = Vec::new();
+        
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            statements.push(self.declaration()?);
+        }
+
+        self.consume(TokenType::RightBrace, "Expect '}' after block.".to_string())?;
+        Ok(statements)
     }
 
     fn assignment(&mut self) -> Result<Expr, LoxError> {

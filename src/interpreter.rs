@@ -5,12 +5,18 @@ use crate::stmt::*;
 use crate::token::*;
 use crate::token_type::*;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct Interpreter {
-    environment: RefCell<Environment>,
+    environment: RefCell<Rc<RefCell<Environment>>>,
 }
 
 impl StmtVisitor<()> for Interpreter {
+    fn visit_block_stmt(&self, stmt: &BlockStmt) -> Result<(), LoxError> {
+        let e = Environment::new_with_enclosing(self.environment.borrow().clone());
+        self.execute_block(&stmt.statements, e)  
+    }
+    
     fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxError> {
         self.evaluate(&stmt.expression)?;
         Ok(())
@@ -29,6 +35,7 @@ impl StmtVisitor<()> for Interpreter {
             Object::Nil
         };
         self.environment
+            .borrow()
             .borrow_mut()
             .define(stmt.name.as_string(), value);
         Ok(())
@@ -39,6 +46,7 @@ impl ExprVisitor<Object> for Interpreter {
     fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxError> {
         let value = self.evaluate(&expr.value)?;
         self.environment
+            .borrow()
             .borrow_mut()
             .assign(&expr.name, value.clone())?;
         Ok(value)
@@ -100,14 +108,14 @@ impl ExprVisitor<Object> for Interpreter {
     }
 
     fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxError> {
-        self.environment.borrow().get(&expr.name)
+        self.environment.borrow().borrow().get(&expr.name)
     }
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
-            environment: RefCell::new(Environment::new()),
+            environment: RefCell::new(Rc::new(RefCell::new(Environment::new()))),
         }
     }
 
@@ -117,6 +125,14 @@ impl Interpreter {
 
     fn execute(&self, stmt: &Stmt) -> Result<(), LoxError> {
         stmt.accept(self)
+    }
+
+    fn execute_block(&self, statements: &[Stmt], environment: Environment) -> Result<(), LoxError> {
+        let previous = self.environment.replace(Rc::new(RefCell::new(environment)));
+        let result = statements.iter().try_for_each(|statement| self.execute(statement));
+        self.environment.replace(previous);
+
+        result
     }
 
     fn is_truthy(&self, object: &Object) -> bool {
