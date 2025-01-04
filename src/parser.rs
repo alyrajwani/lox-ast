@@ -19,7 +19,7 @@ impl Parser<'_> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, LoxError> {
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, LoxResult> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             statements.push(self.declaration()?);
@@ -31,11 +31,11 @@ impl Parser<'_> {
         !self.had_error
     }
 
-    fn expression(&mut self) -> Result<Expr, LoxError> {
+    fn expression(&mut self) -> Result<Expr, LoxResult> {
         self.assignment()
     }
 
-    fn declaration(&mut self) -> Result<Stmt, LoxError> {
+    fn declaration(&mut self) -> Result<Stmt, LoxResult> {
         let result = if self.is_match(&[TokenType::Var]) {
             self.var_declaration()
         } else {
@@ -49,7 +49,10 @@ impl Parser<'_> {
         result
     }
 
-    fn statement(&mut self) -> Result<Stmt, LoxError> {
+    fn statement(&mut self) -> Result<Stmt, LoxResult> {
+        if self.is_match(&[TokenType::Break]) {
+            return self.break_statement();
+        }
         if self.is_match(&[TokenType::For]) {
             return self.for_statement();
         }
@@ -68,7 +71,13 @@ impl Parser<'_> {
         self.expression_statement()
     }
 
-    fn for_statement(&mut self) -> Result<Stmt, LoxError> {
+    fn break_statement(&mut self) -> Result<Stmt, LoxResult> {
+        let token = self.peek().duplicate();
+        self.consume(TokenType::Semicolon, "Expect ';' after 'break'.".to_string())?;
+        Ok(Stmt::Break(BreakStmt { token }))
+    }
+
+    fn for_statement(&mut self) -> Result<Stmt, LoxResult> {
         self.consume(TokenType::LeftParen, "Expect '(' after 'for'.".to_string())?;
         let initializer = if self.is_match(&[TokenType::Semicolon]) {
             None
@@ -114,7 +123,7 @@ impl Parser<'_> {
         Ok(body)
     }
 
-    fn if_statement(&mut self) -> Result<Stmt, LoxError> {
+    fn if_statement(&mut self) -> Result<Stmt, LoxResult> {
         self.consume(TokenType::LeftParen, "Expect '(' after 'if'.".to_string())?;
         let condition = self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after condition.".to_string())?;
@@ -129,13 +138,13 @@ impl Parser<'_> {
         Ok(Stmt::If(IfStmt { condition, then_branch, else_branch }))
     }
 
-    fn print_statement(&mut self) -> Result<Stmt, LoxError> {
+    fn print_statement(&mut self) -> Result<Stmt, LoxResult> {
         let value = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
         Ok(Stmt::Print(PrintStmt { expression: value }))
     }
 
-    fn var_declaration(&mut self) -> Result<Stmt, LoxError> {
+    fn var_declaration(&mut self) -> Result<Stmt, LoxResult> {
         let name = self.consume(TokenType::Identifier, "Expect variable name.".to_string())?;
         let initializer = if self.is_match(&[TokenType::Equal]) {
             Some(self.expression()?)
@@ -150,7 +159,7 @@ impl Parser<'_> {
         Ok(Stmt::Var(VarStmt { name, initializer }))
     }
 
-    fn while_statement(&mut self) -> Result<Stmt, LoxError> {
+    fn while_statement(&mut self) -> Result<Stmt, LoxResult> {
         self.consume(TokenType::LeftParen, "Expect '(' after 'while'.".to_string())?;
         let condition = self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after condition.".to_string())?;
@@ -159,13 +168,13 @@ impl Parser<'_> {
         Ok(Stmt::While(WhileStmt { condition, body }))
     }
 
-    fn expression_statement(&mut self) -> Result<Stmt, LoxError> {
+    fn expression_statement(&mut self) -> Result<Stmt, LoxResult> {
         let expr = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
         Ok(Stmt::Expression(ExpressionStmt { expression: expr }))
     }
 
-    fn block(&mut self) -> Result<Vec<Stmt>, LoxError> {
+    fn block(&mut self) -> Result<Vec<Stmt>, LoxResult> {
         let mut statements = Vec::new();
         
         while !self.check(TokenType::RightBrace) && !self.is_at_end() {
@@ -176,7 +185,7 @@ impl Parser<'_> {
         Ok(statements)
     }
 
-    fn assignment(&mut self) -> Result<Expr, LoxError> {
+    fn assignment(&mut self) -> Result<Expr, LoxResult> {
         let expr = self.or()?;
 
         if self.is_match(&[TokenType::Equal]) {
@@ -196,7 +205,7 @@ impl Parser<'_> {
         Ok(expr)
     }
 
-    fn or(&mut self) -> Result<Expr, LoxError> {
+    fn or(&mut self) -> Result<Expr, LoxResult> {
         let mut expr = self.and()?;
 
         while self.is_match(&[TokenType::Or]) {
@@ -212,7 +221,7 @@ impl Parser<'_> {
         Ok(expr)
     }
 
-    fn and(&mut self) -> Result<Expr, LoxError> {
+    fn and(&mut self) -> Result<Expr, LoxResult> {
         let mut expr = self.equality()?;
 
         while self.is_match(&[TokenType::And]) {
@@ -229,7 +238,7 @@ impl Parser<'_> {
     }
 
 
-    fn equality(&mut self) -> Result<Expr, LoxError> {
+    fn equality(&mut self) -> Result<Expr, LoxResult> {
         // equality => comparison ( ( != | == ) comparison )*
         let mut expr = self.comparison()?;
 
@@ -246,7 +255,7 @@ impl Parser<'_> {
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Expr, LoxError> {
+    fn comparison(&mut self) -> Result<Expr, LoxResult> {
         // comparison => term ( ( > | >= | < | <= ) term )*
         let mut expr = self.term()?;
 
@@ -268,7 +277,7 @@ impl Parser<'_> {
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Expr, LoxError> {
+    fn term(&mut self) -> Result<Expr, LoxResult> {
         // term => factor ( ( - | + ) factor )*
         let mut expr = self.factor()?;
 
@@ -285,7 +294,7 @@ impl Parser<'_> {
         Ok(expr)
     }
 
-    fn factor(&mut self) -> Result<Expr, LoxError> {
+    fn factor(&mut self) -> Result<Expr, LoxResult> {
         // factor => unary ( ( * | \ ) unary )*
         let mut expr = self.unary()?;
 
@@ -302,7 +311,7 @@ impl Parser<'_> {
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Expr, LoxError> {
+    fn unary(&mut self) -> Result<Expr, LoxResult> {
         // unary => ( - | ! ) unary
         //       |  primary
         if self.is_match(&[TokenType::Bang, TokenType::Minus]) {
@@ -317,7 +326,7 @@ impl Parser<'_> {
         Ok(self.primary()?)
     }
 
-    fn primary(&mut self) -> Result<Expr, LoxError> {
+    fn primary(&mut self) -> Result<Expr, LoxResult> {
         // primary => NUMBER | STRING | true | false | nil | ( expression )
         if self.is_match(&[TokenType::False]) {
             return Ok(Expr::Literal(LiteralExpr {
@@ -357,10 +366,10 @@ impl Parser<'_> {
         }
         
         let peek = self.peek().duplicate();
-        Err(LoxError::parse_error(&peek, "Expect expression."))
+        Err(LoxResult::parse_error(&peek, "Expect expression."))
     }
 
-    fn consume(&mut self, ttype: TokenType, message: String) -> Result<Token, LoxError> {
+    fn consume(&mut self, ttype: TokenType, message: String) -> Result<Token, LoxResult> {
         if self.check(ttype) {
             Ok(self.advance().duplicate())
         } else {
@@ -406,9 +415,9 @@ impl Parser<'_> {
         self.tokens.get(self.current - 1).unwrap()
     }
 
-    fn error(&mut self, token: &Token, message: String) -> LoxError {
+    fn error(&mut self, token: &Token, message: String) -> LoxResult {
         self.had_error = true;
-        LoxError::parse_error(token, &message)
+        LoxResult::parse_error(token, &message)
     }
 
     fn synchronize(&mut self) {

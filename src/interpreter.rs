@@ -9,26 +9,45 @@ use std::rc::Rc;
 
 pub struct Interpreter {
     environment: RefCell<Rc<RefCell<Environment>>>,
+    nest_level: RefCell<usize>,
 }
 
 impl StmtVisitor<()> for Interpreter {
-    fn visit_block_stmt(&self, stmt: &BlockStmt) -> Result<(), LoxError> {
+    fn visit_break_stmt(&self, stmt: &BreakStmt) -> Result<(), LoxResult> {
+        if *self.nest_level.borrow() == 0 {
+            Err(LoxResult::runtime_error(&stmt.token, "Cannot break outside scope of loop."))
+        } else {
+            Err(LoxResult::Break)
+        }
+    }
+
+    fn visit_block_stmt(&self, stmt: &BlockStmt) -> Result<(), LoxResult> {
         let e = Environment::new_with_enclosing(self.environment.borrow().clone());
         self.execute_block(&stmt.statements, e)  
     }
     
-    fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxError> {
+    fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), LoxResult> {
         self.evaluate(&stmt.expression)?;
         Ok(())
     }
 
-    fn visit_print_stmt(&self, stmt: &PrintStmt) -> Result<(), LoxError> {
+    fn visit_if_stmt(&self, stmt: &IfStmt) -> Result<(), LoxResult> {
+        if self.is_truthy(&self.evaluate(&stmt.condition)?) {
+            self.execute(&stmt.then_branch)?;
+        } else if let Some(else_branch) = &stmt.else_branch {
+            self.execute(else_branch)?;
+        }
+
+        Ok(())
+    }
+
+    fn visit_print_stmt(&self, stmt: &PrintStmt) -> Result<(), LoxResult> {
         let value = self.evaluate(&stmt.expression)?;
         println!("{value}");
         Ok(())
     }
 
-    fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxError> {
+    fn visit_var_stmt(&self, stmt: &VarStmt) -> Result<(), LoxResult> {
         let value = if let Some(initializer) = &stmt.initializer {
             self.evaluate(initializer)?
         } else {
@@ -40,10 +59,25 @@ impl StmtVisitor<()> for Interpreter {
             .define(stmt.name.as_string(), value);
         Ok(())
     }
+
+    fn visit_while_stmt(&self, stmt: &WhileStmt) -> Result<(), LoxResult> {
+        *self.nest_level.borrow_mut() += 1;
+        while self.is_truthy(&self.evaluate(&stmt.condition)?) {
+            match self.execute(&stmt.body) {
+                Err(LoxResult::Break) => break,
+                Err(e) => return Err(e),
+                Ok(_) => {}
+            }
+        }
+
+        *self.nest_level.borrow_mut() -= 1;
+        
+        Ok(())
+    }
 }
 
 impl ExprVisitor<Object> for Interpreter {
-    fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxError> {
+    fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, LoxResult> {
         let value = self.evaluate(&expr.value)?;
         self.environment
             .borrow()
@@ -52,15 +86,31 @@ impl ExprVisitor<Object> for Interpreter {
         Ok(value)
     }
 
-    fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, LoxError> {
+    fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, LoxResult> {
         Ok(expr.value.clone().unwrap())
     }
 
-    fn visit_grouping_expr(&self, expr: &GroupingExpr) -> Result<Object, LoxError> {
+    fn visit_logical_expr(&self, expr: &LogicalExpr) -> Result<Object, LoxResult> {
+        let left = self.evaluate(&expr.left)?;
+
+        if expr.operator.token_type() == TokenType::Or {
+            if self.is_truthy(&left) { 
+                return Ok(left);
+            } 
+        } else {
+            if !self.is_truthy(&left) {
+                return Ok(left);
+            }
+        }
+
+        self.evaluate(&expr.right)
+    }
+
+    fn visit_grouping_expr(&self, expr: &GroupingExpr) -> Result<Object, LoxResult> {
         self.evaluate(&expr.expression)
     }
 
-    fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<Object, LoxError> {
+    fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<Object, LoxResult> {
         let left = self.evaluate(&expr.left)?;
         let right = self.evaluate(&expr.right)?;
 
@@ -85,12 +135,12 @@ impl ExprVisitor<Object> for Interpreter {
         };
 
         match result {
-            Object::ErrorMessage(s) => Err(LoxError::runtime_error(&expr.operator, &s)),
+            Object::ErrorMessage(s) => Err(LoxResult::runtime_error(&expr.operator, &s)),
             _ => Ok(result),
         }
     }
 
-    fn visit_unary_expr(&self, expr: &UnaryExpr) -> Result<Object, LoxError> {
+    fn visit_unary_expr(&self, expr: &UnaryExpr) -> Result<Object, LoxResult> {
         let right = self.evaluate(&expr.right)?;
         let result = match expr.operator.token_type() {
             TokenType::Minus => match right {
@@ -102,12 +152,12 @@ impl ExprVisitor<Object> for Interpreter {
         };
 
         match result {
-            Object::ErrorMessage(s) => Err(LoxError::runtime_error(&expr.operator, &s)),
+            Object::ErrorMessage(s) => Err(LoxResult::runtime_error(&expr.operator, &s)),
             _ => Ok(result),
         }
     }
 
-    fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxError> {
+    fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, LoxResult> {
         self.environment.borrow().borrow().get(&expr.name)
     }
 }
@@ -116,18 +166,19 @@ impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
             environment: RefCell::new(Rc::new(RefCell::new(Environment::new()))),
+            nest_level: RefCell::new(0),
         }
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<Object, LoxError> {
+    fn evaluate(&self, expr: &Expr) -> Result<Object, LoxResult> {
         expr.accept(self)
     }
 
-    fn execute(&self, stmt: &Stmt) -> Result<(), LoxError> {
+    fn execute(&self, stmt: &Stmt) -> Result<(), LoxResult> {
         stmt.accept(self)
     }
 
-    fn execute_block(&self, statements: &[Stmt], environment: Environment) -> Result<(), LoxError> {
+    fn execute_block(&self, statements: &[Stmt], environment: Environment) -> Result<(), LoxResult> {
         let previous = self.environment.replace(Rc::new(RefCell::new(environment)));
         let result = statements.iter().try_for_each(|statement| self.execute(statement));
         self.environment.replace(previous);
@@ -157,9 +208,9 @@ impl Interpreter {
 
     pub fn interpret(&self, statements: &[Stmt]) -> bool {
         let mut success = false;
+        *self.nest_level.borrow_mut() = 0;
         for stmt in statements {
-            if let Err(e) = self.execute(stmt) {
-                e.report("".to_string());
+            if let Err(_) = self.execute(stmt) {
                 success = false;
                 break;
             }

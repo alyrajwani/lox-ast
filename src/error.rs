@@ -1,56 +1,50 @@
 use crate::token::*;
 use crate::token_type::*;
 
-#[derive(Debug)]
-pub struct LoxError {
-    token: Option<Token>,
-    line: usize,
-    message: String,
+pub enum LoxResult {
+    LoxParseError { token: Token, message: String },
+    LoxRuntimeError { token: Token, message: String },
+    LoxError { line: usize, message: String },
+    Break,
 }
 
-impl LoxError {
-    pub fn error(line: usize, message: &str) -> LoxError {
+impl LoxResult {
+    pub fn error(line: usize, message: &str) -> LoxResult {
         // scanning error; tokens don't exist at this point
-        LoxError {
-            token: None,
-            line,
-            message: message.to_string(),
-        }
+        let e = LoxResult::LoxError { line, message: message.to_string() };
+        e.report("");
+        e
     }
 
-    pub fn parse_error(token: &Token, message: &str) -> LoxError {
+    pub fn parse_error(token: &Token, message: &str) -> LoxResult {
         // parsing error; cite the incorrect token in error message
-        LoxError {
-            token: Some(token.duplicate()),
-            line: token.line,
-            message: message.to_string(),
-        }
+        let e = LoxResult::LoxParseError { token: token.duplicate(), message: message.to_string() };
+        e.report("");
+        e
     }
 
-    pub fn runtime_error(token: &Token, message: &str) -> LoxError {
+    pub fn runtime_error(token: &Token, message: &str) -> LoxResult {
         // runtime error; cite in correct expression in error message
-        LoxError {
-            token: Some(token.duplicate()),
-            line: token.line,
-            message: message.to_string(),
-        }
+        let e = LoxResult::LoxRuntimeError { token: token.duplicate(), message: message.to_string() };
+        e.report("");
+        e
     }
 
-    pub fn report(&self, loc: String) {
+    fn report(&self, loc: &str) {
         // print the appropriate error message
-        if let Some(token) = &self.token {
-            if token.is(TokenType::Eof) {
-                eprintln!("[line {}] at end: {}", token.line, self.message);
-            } else {
-                eprintln!(
-                    "[line {}] at '{}': {}",
-                    token.line,
-                    token.as_string(),
-                    self.message
-                );
-            }
-        } else {
-            eprintln!("[line {}] Error{}: {}", self.line, loc, self.message);
-        }
+        match self {
+            LoxResult::LoxParseError{ token, message } 
+            | LoxResult::LoxRuntimeError{ token, message } => {
+                if token.is(TokenType::Eof) {
+                    eprintln!("[line {}] at end: {}", token.line, message);
+                } else { 
+                    eprintln!("[line {}] at '{}': {}", token.line, token.as_string(), message);
+                }
+            },
+            LoxResult::LoxError{ line, message } => {
+                eprintln!("[line {}] Error{}: {}", *line, loc, message);
+            },
+            LoxResult::Break => {},
+        };
     }
 }
