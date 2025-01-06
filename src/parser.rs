@@ -40,6 +40,8 @@ impl Parser<'_> {
     fn declaration(&mut self) -> Result<Stmt, LoxResult> {
         let result = if self.is_match(&[TokenType::Var]) {
             self.var_declaration()
+        } else if self.is_match(&[TokenType::Fun]) { 
+            self.function("function")
         } else {
             self.statement()
         };
@@ -79,13 +81,13 @@ impl Parser<'_> {
         let token = self.peek().duplicate();
         self.consume(
             TokenType::Semicolon,
-            "Expect ';' after 'break'.".to_string(),
+            "Expect ';' after 'break'.",
         )?;
         Ok(Stmt::Break(BreakStmt { token }))
     }
 
     fn for_statement(&mut self) -> Result<Stmt, LoxResult> {
-        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.".to_string())?;
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
         let initializer = if self.is_match(&[TokenType::Semicolon]) {
             None
         } else if self.is_match(&[TokenType::Var]) {
@@ -102,7 +104,7 @@ impl Parser<'_> {
 
         self.consume(
             TokenType::Semicolon,
-            "Expect ';' after for clauses.".to_string(),
+            "Expect ';' after for clauses.",
         )?;
 
         let increment = if !self.check(TokenType::RightParen) {
@@ -113,7 +115,7 @@ impl Parser<'_> {
 
         self.consume(
             TokenType::RightParen,
-            "Expect ')' after for clauses.".to_string(),
+            "Expect ')' after for clauses.",
         )?;
 
         let mut body = self.statement()?;
@@ -144,11 +146,11 @@ impl Parser<'_> {
     }
 
     fn if_statement(&mut self) -> Result<Stmt, LoxResult> {
-        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.".to_string())?;
+        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
         let condition = self.expression()?;
         self.consume(
             TokenType::RightParen,
-            "Expect ')' after condition.".to_string(),
+            "Expect ')' after condition.",
         )?;
 
         let then_branch = Box::new(self.statement()?);
@@ -167,12 +169,12 @@ impl Parser<'_> {
 
     fn print_statement(&mut self) -> Result<Stmt, LoxResult> {
         let value = self.expression()?;
-        self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
         Ok(Stmt::Print(PrintStmt { expression: value }))
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, LoxResult> {
-        let name = self.consume(TokenType::Identifier, "Expect variable name.".to_string())?;
+        let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
         let initializer = if self.is_match(&[TokenType::Equal]) {
             Some(self.expression()?)
         } else {
@@ -181,7 +183,7 @@ impl Parser<'_> {
 
         self.consume(
             TokenType::Semicolon,
-            "Expect ';' after variable declaration.".to_string(),
+            "Expect ';' after variable declaration.",
         )?;
         Ok(Stmt::Var(VarStmt { name, initializer }))
     }
@@ -189,12 +191,12 @@ impl Parser<'_> {
     fn while_statement(&mut self) -> Result<Stmt, LoxResult> {
         self.consume(
             TokenType::LeftParen,
-            "Expect '(' after 'while'.".to_string(),
+            "Expect '(' after 'while'.",
         )?;
         let condition = self.expression()?;
         self.consume(
             TokenType::RightParen,
-            "Expect ')' after condition.".to_string(),
+            "Expect ')' after condition.",
         )?;
         let body = Box::new(self.statement()?);
 
@@ -203,8 +205,33 @@ impl Parser<'_> {
 
     fn expression_statement(&mut self) -> Result<Stmt, LoxResult> {
         let expr = self.expression()?;
-        self.consume(TokenType::Semicolon, "Expect ';' after value.".to_string())?;
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
         Ok(Stmt::Expression(ExpressionStmt { expression: expr }))
+    }
+    
+    fn function(&mut self, kind: &str) -> Result<Stmt, LoxResult> {
+        let name = self.consume(TokenType::Identifier, &format!("Expect {kind} name."))?;
+
+        self.consume(TokenType::LeftParen, &format!("Expect '(' after {kind} name."))?;
+        let mut params = Vec::new();
+        if !self.check(TokenType::RightParen) {
+            params.push(self.consume(TokenType::Identifier, "Expect parameter name.")?);
+            while self.is_match(&[TokenType::Comma]) {
+                if params.len() >= 255 {
+                    if !self.had_error {
+                        let peek = self.peek().duplicate();
+                        self.error(&peek, "Can't have more than 255 parameters.");
+                    }
+                }
+                params.push(self.consume(TokenType::Identifier, "Expect parameter name.")?);
+            }
+        }
+
+        self.consume(TokenType::RightParen, "Expect ')' after parameters.")?;
+
+        self.consume(TokenType::LeftBrace, &format!("Expect '{{' before {kind} body."))?;
+        let body = self.block()?;
+        Ok(Stmt::Function(FunctionStmt { name, params, body }))
     }
 
     fn block(&mut self) -> Result<Vec<Stmt>, LoxResult> {
@@ -214,7 +241,7 @@ impl Parser<'_> {
             statements.push(self.declaration()?);
         }
 
-        self.consume(TokenType::RightBrace, "Expect '}' after block.".to_string())?;
+        self.consume(TokenType::RightBrace, "Expect '}' after block.")?;
         Ok(statements)
     }
 
@@ -232,7 +259,7 @@ impl Parser<'_> {
                 }));
             }
 
-            self.error(&equals, "Invalid assignment target.".to_string());
+            self.error(&equals, "Invalid assignment target.");
         }
 
         Ok(expr)
@@ -380,8 +407,7 @@ impl Parser<'_> {
                 if arguments.len() >= 255 {
                     if !self.had_error {
                         let peek = self.peek().duplicate();
-                        LoxResult::runtime_error(&peek, "Can't have more than 255 arguments.");
-                        self.had_error = true;
+                        self.error(&peek, "Can't have more than 255 arguments.");
                     }
                 }
                 arguments.push(self.expression()?);
@@ -390,7 +416,7 @@ impl Parser<'_> {
 
         let paren = self.consume(
             TokenType::RightParen,
-            "Expect ')' after arguments.".to_string(),
+            "Expect ')' after arguments.",
         )?;
         Ok(Expr::Call(CallExpr {
             callee: Rc::clone(callee),
@@ -431,7 +457,7 @@ impl Parser<'_> {
             let expr = self.expression()?;
             self.consume(
                 TokenType::RightParen,
-                "Expect ')' after expression".to_string(),
+                "Expect ')' after expression",
             )?;
             return Ok(Expr::Grouping(GroupingExpr {
                 expression: Box::new(expr),
@@ -442,7 +468,7 @@ impl Parser<'_> {
         Err(LoxResult::parse_error(&peek, "Expect expression."))
     }
 
-    fn consume(&mut self, ttype: TokenType, message: String) -> Result<Token, LoxResult> {
+    fn consume(&mut self, ttype: TokenType, message: &str) -> Result<Token, LoxResult> {
         if self.check(ttype) {
             Ok(self.advance().duplicate())
         } else {
@@ -488,9 +514,9 @@ impl Parser<'_> {
         self.tokens.get(self.current - 1).unwrap()
     }
 
-    fn error(&mut self, token: &Token, message: String) -> LoxResult {
+    fn error(&mut self, token: &Token, message: &str) -> LoxResult {
         self.had_error = true;
-        LoxResult::parse_error(token, &message)
+        LoxResult::parse_error(token, message)
     }
 
     fn synchronize(&mut self) {

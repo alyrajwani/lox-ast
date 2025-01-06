@@ -8,7 +8,7 @@ all: check clean build run
 default: help
 
 build: 
-	@echo "> Building expr.rs..."
+	@echo "> Building files..."
 	@cargo build
 clean:
 	@echo "> Cleaning build directory..."

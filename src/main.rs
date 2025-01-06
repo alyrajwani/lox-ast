@@ -10,6 +10,9 @@ mod scanner;
 mod stmt;
 mod token;
 mod token_type;
+mod callable;
+mod native_functions;
+mod lox_function;
 
 use error::*;
 use interpreter::*;

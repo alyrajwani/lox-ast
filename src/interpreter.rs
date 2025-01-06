@@ -1,6 +1,9 @@
+use crate::callable::*;
 use crate::environment::*;
 use crate::error::*;
 use crate::expr::*;
+use crate::native_functions::*;
+use crate::lox_function::*;
 use crate::stmt::*;
 use crate::token::*;
 use crate::token_type::*;
@@ -8,11 +11,18 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct Interpreter {
+    pub globals: Rc<RefCell<Environment>>,
     environment: RefCell<Rc<RefCell<Environment>>>,
     nest_level: RefCell<usize>,
 }
 
 impl StmtVisitor<()> for Interpreter {
+    fn visit_function_stmt(&self, stmt: &FunctionStmt) -> Result<(), LoxResult> {
+        let function = LoxFunction::new(&Rc::new(stmt));
+        self.environment.borrow().borrow_mut().define(stmt.name.as_string(), Object::Function(Callable { func: Rc::new(function) }));
+        Ok(())
+    }
+
     fn visit_break_stmt(&self, stmt: &BreakStmt) -> Result<(), LoxResult> {
         if *self.nest_level.borrow() == 0 {
             Err(LoxResult::runtime_error(
@@ -89,7 +99,13 @@ impl ExprVisitor<Object> for Interpreter {
         }
 
         if let Object::Function(function) = callee {
-            function.call(self, arguments)
+            if arguments.len() != function.func.arity() {
+                return Err(LoxResult::runtime_error(
+                    &expr.paren,
+                    &format!("Expected {} arguments but got {}.", function.func.arity(), arguments.len()),
+                ));
+            }
+            function.func.call(self, arguments)
         } else {
             Err(LoxResult::runtime_error(
                 &expr.paren,
@@ -185,8 +201,15 @@ impl ExprVisitor<Object> for Interpreter {
 
 impl Interpreter {
     pub fn new() -> Interpreter {
+        let globals = Rc::new(RefCell::new(Environment::new()));
+
+        globals.borrow_mut().define("clock", Object::Function(Callable {
+            func: Rc::new(NativeClock {} ),
+        }));
+
         Interpreter {
-            environment: RefCell::new(Rc::new(RefCell::new(Environment::new()))),
+            globals: Rc::clone(&globals),
+            environment: RefCell::new(Rc::clone(&globals)),
             nest_level: RefCell::new(0),
         }
     }
@@ -199,7 +222,7 @@ impl Interpreter {
         stmt.accept(self)
     }
 
-    fn execute_block(
+    pub fn execute_block(
         &self,
         statements: &[Stmt],
         environment: Environment,

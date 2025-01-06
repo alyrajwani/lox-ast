@@ -1,16 +1,16 @@
-use crate::error::*;
-use crate::interpreter::*;
 use crate::token_type::*;
+use crate::callable::*;
 use std::cmp::*;
 use std::fmt;
 use std::ops::*;
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
     Num(f64),
     Str(String),
     Bool(bool),
-    Function(LoxCallable),
+    Function(Callable),
     Nil,
     ErrorMessage(String),
 }
@@ -31,15 +31,6 @@ impl fmt::Display for Object {
             Object::Nil => write!(f, "nil"),
             Object::ErrorMessage(_) => panic!("Do not print upon error."),
         }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct LoxCallable;
-
-impl LoxCallable {
-    pub fn call(&self, _terp: &Interpreter, _arguments: Vec<Object>) -> Result<Object, LoxResult> {
-        Ok(Object::Nil)
     }
 }
 
