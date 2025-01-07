@@ -5,36 +5,47 @@ use crate::callable::*;
 use crate::error::*;
 use crate::stmt::*;
 use std::rc::Rc;
+use std::cell::RefCell;
 
 pub struct LoxFunction {
-    declaration: Rc<FunctionStmt>, 
+    name: Token, 
+    params: Rc<Vec<Token>>,
+    body: Rc<Vec<Stmt>>,
+    closure: Rc<RefCell<Environment>>,
 }
 
 impl LoxFunction {
-    pub fn new(declaration: &Rc<FunctionStmt>) -> LoxFunction {
-        LoxFunction { declaration: Rc::clone(declaration) } 
+    pub fn new(declaration: &FunctionStmt, closure: &Rc<RefCell<Environment>>) -> LoxFunction {
+        LoxFunction { 
+            name: declaration.name.duplicate(),
+            params: Rc::clone(&declaration.params),
+            body: Rc::clone(&declaration.body),
+            closure: Rc::clone(closure),
+        } 
     }
 }
 
 impl LoxCallable for LoxFunction {
     fn call(&self, interpreter: &Interpreter, arguments: Vec<Object>) -> Result<Object, LoxResult> {
 
-            let mut environment = Environment::new_with_enclosing(Rc::clone(&interpreter.globals));
+            let mut environment = Environment::new_with_enclosing(Rc::clone(&self.closure));
 
-            for (param, arg) in self.declaration.params.iter().zip(arguments.iter()) {
+            for (param, arg) in self.params.iter().zip(arguments.iter()) {
                 environment.define(param.as_string(), arg.clone());
             }
-
-            interpreter.execute_block(&self.declaration.body, environment)?;
-
-            Ok(Object::Nil)
+            
+            match interpreter.execute_block(&self.body, environment) {
+                Err(LoxResult::Return { value }) => Ok(value),
+                Err(e) => Err(e),
+                Ok(_) => Ok(Object::Nil),
+            }
     }
 
     fn arity(&self) -> usize {
-            self.declaration.params.len()
+            self.params.len()
     }
 
     fn to_string(&self) -> String {        
-            self.declaration.name.as_string().to_string()
+            self.name.as_string().to_string()
     }
 }

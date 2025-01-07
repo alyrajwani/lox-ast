@@ -1,15 +1,24 @@
 use crate::token::*;
 use crate::token_type::*;
 
+#[derive(Debug)]
 pub enum LoxResult {
     LoxParseError { token: Token, message: String },
     LoxRuntimeError { token: Token, message: String },
     LoxError { line: usize, message: String },
     LoxSystemError { message: String},
+    Return { value: Object },
     Break,
 }
 
 impl LoxResult {
+    pub fn return_value(value: Object) -> LoxResult {
+        let v = LoxResult::Return {
+            value,
+        };
+        v
+    }
+
     pub fn error(line: usize, message: &str) -> LoxResult {
         // scanning error; tokens don't exist at this point
         let e = LoxResult::LoxError {
@@ -70,7 +79,8 @@ impl LoxResult {
             LoxResult::LoxSystemError { message } => {
                 eprintln!("System Error: {message}.")
             }
-            LoxResult::Break => {}
+            LoxResult::Break 
+            | LoxResult::Return { value: _ } => {}
         };
     }
 }

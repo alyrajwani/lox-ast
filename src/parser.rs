@@ -66,6 +66,9 @@ impl Parser<'_> {
         if self.is_match(&[TokenType::Print]) {
             return self.print_statement();
         }
+        if self.is_match(&[TokenType::Return]) {
+            return self.return_statement();
+        }
         if self.is_match(&[TokenType::While]) {
             return self.while_statement();
         }
@@ -173,6 +176,18 @@ impl Parser<'_> {
         Ok(Stmt::Print(PrintStmt { expression: value }))
     }
 
+    fn return_statement(&mut self) -> Result<Stmt, LoxResult> {
+        let keyword = self.previous().duplicate();
+        let value = if !self.check(TokenType::Semicolon) {
+            Some(self.expression()?)
+        } else { 
+            None
+        };
+
+        self.consume(TokenType::Semicolon, "Expect ';' after return value.")?;
+        Ok(Stmt::Return(ReturnStmt {keyword, value}))
+    }
+
     fn var_declaration(&mut self) -> Result<Stmt, LoxResult> {
         let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
         let initializer = if self.is_match(&[TokenType::Equal]) {
@@ -231,7 +246,7 @@ impl Parser<'_> {
 
         self.consume(TokenType::LeftBrace, &format!("Expect '{{' before {kind} body."))?;
         let body = self.block()?;
-        Ok(Stmt::Function(FunctionStmt { name, params, body }))
+        Ok(Stmt::Function(FunctionStmt { name, params: Rc::new(params), body: Rc::new(body) }))
     }
 
     fn block(&mut self) -> Result<Vec<Stmt>, LoxResult> {
