@@ -10,7 +10,7 @@ use std::cell::RefCell;
 pub struct LoxFunction {
     name: Token, 
     params: Rc<Vec<Token>>,
-    body: Rc<Vec<Stmt>>,
+    body: Rc<Vec<Rc<Stmt>>>,
     closure: Rc<RefCell<Environment>>,
 }
 

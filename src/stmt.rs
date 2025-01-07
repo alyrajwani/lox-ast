@@ -16,17 +16,17 @@ pub enum Stmt {
 }
 
 impl Stmt {
-    pub fn accept<T>(&self, stmt_visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
+    pub fn accept<T>(&self, wrapper: &Rc<Stmt>, stmt_visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
         match self {
-            Stmt::Break(v) => v.accept(stmt_visitor),
-            Stmt::Block(v) => v.accept(stmt_visitor),
-            Stmt::Expression(v) => v.accept(stmt_visitor),
-            Stmt::Function(v) => v.accept(stmt_visitor),
-            Stmt::If(v) => v.accept(stmt_visitor),
-            Stmt::Print(v) => v.accept(stmt_visitor),
-            Stmt::Return(v) => v.accept(stmt_visitor),
-            Stmt::Var(v) => v.accept(stmt_visitor),
-            Stmt::While(v) => v.accept(stmt_visitor),
+            Stmt::Break(v) => stmt_visitor.visit_break_stmt(wrapper, &v),
+            Stmt::Block(v) => stmt_visitor.visit_block_stmt(wrapper, &v),
+            Stmt::Expression(v) => stmt_visitor.visit_expression_stmt(wrapper, &v),
+            Stmt::Function(v) => stmt_visitor.visit_function_stmt(wrapper, &v),
+            Stmt::If(v) => stmt_visitor.visit_if_stmt(wrapper, &v),
+            Stmt::Print(v) => stmt_visitor.visit_print_stmt(wrapper, &v),
+            Stmt::Return(v) => stmt_visitor.visit_return_stmt(wrapper, &v),
+            Stmt::Var(v) => stmt_visitor.visit_var_stmt(wrapper, &v),
+            Stmt::While(v) => stmt_visitor.visit_while_stmt(wrapper, &v),
         }
     }
 }
@@ -36,107 +36,53 @@ pub struct BreakStmt {
 }
 
 pub struct BlockStmt {
-    pub statements: Vec<Stmt>,
+    pub statements: Rc<Vec<Rc<Stmt>>>,
 }
 
 pub struct ExpressionStmt {
-    pub expression: Expr,
+    pub expression: Rc<Expr>,
 }
 
 pub struct FunctionStmt {
     pub name: Token,
     pub params: Rc<Vec<Token>>,
-    pub body: Rc<Vec<Stmt>>,
+    pub body: Rc<Vec<Rc<Stmt>>>,
 }
 
 pub struct IfStmt {
-    pub condition: Expr,
-    pub then_branch: Box<Stmt>,
-    pub else_branch: Option<Box<Stmt>>,
+    pub condition: Rc<Expr>,
+    pub then_branch: Rc<Stmt>,
+    pub else_branch: Option<Rc<Stmt>>,
 }
 
 pub struct PrintStmt {
-    pub expression: Expr,
+    pub expression: Rc<Expr>,
 }
 
 pub struct ReturnStmt {
     pub keyword: Token,
-    pub value: Option<Expr>,
+    pub value: Option<Rc<Expr>>,
 }
 
 pub struct VarStmt {
     pub name: Token,
-    pub initializer: Option<Expr>,
+    pub initializer: Option<Rc<Expr>>,
 }
 
 pub struct WhileStmt {
-    pub condition: Expr,
-    pub body: Box<Stmt>,
+    pub condition: Rc<Expr>,
+    pub body: Rc<Stmt>,
 }
 
 pub trait StmtVisitor<T> {
-    fn visit_break_stmt(&self, expr: &BreakStmt) -> Result<T, LoxResult>;
-    fn visit_block_stmt(&self, expr: &BlockStmt) -> Result<T, LoxResult>;
-    fn visit_expression_stmt(&self, expr: &ExpressionStmt) -> Result<T, LoxResult>;
-    fn visit_function_stmt(&self, expr: &FunctionStmt) -> Result<T, LoxResult>;
-    fn visit_if_stmt(&self, expr: &IfStmt) -> Result<T, LoxResult>;
-    fn visit_print_stmt(&self, expr: &PrintStmt) -> Result<T, LoxResult>;
-    fn visit_return_stmt(&self, expr: &ReturnStmt) -> Result<T, LoxResult>;
-    fn visit_var_stmt(&self, expr: &VarStmt) -> Result<T, LoxResult>;
-    fn visit_while_stmt(&self, expr: &WhileStmt) -> Result<T, LoxResult>;
-}
-
-impl BreakStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_break_stmt(self)
-    }
-}
-
-impl BlockStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_block_stmt(self)
-    }
-}
-
-impl ExpressionStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_expression_stmt(self)
-    }
-}
-
-impl FunctionStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_function_stmt(self)
-    }
-}
-
-impl IfStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_if_stmt(self)
-    }
-}
-
-impl PrintStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_print_stmt(self)
-    }
-}
-
-impl ReturnStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_return_stmt(self)
-    }
-}
-
-impl VarStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_var_stmt(self)
-    }
-}
-
-impl WhileStmt {
-    pub fn accept<T>(&self, visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
-        visitor.visit_while_stmt(self)
-    }
+    fn visit_break_stmt(&self, wrapper: &Rc<Stmt>, stmt: &BreakStmt) -> Result<T, LoxResult>;
+    fn visit_block_stmt(&self, wrapper: &Rc<Stmt>, stmt: &BlockStmt) -> Result<T, LoxResult>;
+    fn visit_expression_stmt(&self, wrapper: &Rc<Stmt>, stmt: &ExpressionStmt) -> Result<T, LoxResult>;
+    fn visit_function_stmt(&self, wrapper: &Rc<Stmt>, stmt: &FunctionStmt) -> Result<T, LoxResult>;
+    fn visit_if_stmt(&self, wrapper: &Rc<Stmt>, stmt: &IfStmt) -> Result<T, LoxResult>;
+    fn visit_print_stmt(&self, wrapper: &Rc<Stmt>, stmt: &PrintStmt) -> Result<T, LoxResult>;
+    fn visit_return_stmt(&self, wrapper: &Rc<Stmt>, stmt: &ReturnStmt) -> Result<T, LoxResult>;
+    fn visit_var_stmt(&self, wrapper: &Rc<Stmt>, stmt: &VarStmt) -> Result<T, LoxResult>;
+    fn visit_while_stmt(&self, wrapper: &Rc<Stmt>, stmt: &WhileStmt) -> Result<T, LoxResult>;
 }
 

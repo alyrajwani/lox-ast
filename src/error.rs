@@ -7,6 +7,7 @@ pub enum LoxResult {
     LoxRuntimeError { token: Token, message: String },
     LoxError { line: usize, message: String },
     LoxSystemError { message: String},
+    LoxResolverError { token: Token, message: String },
     Return { value: Object },
     Break,
 }
@@ -39,6 +40,15 @@ impl LoxResult {
         e
     }
 
+    pub fn resolver_error(token: &Token, message: &str) -> LoxResult {
+        let e = LoxResult::LoxResolverError {
+            token: token.duplicate(),
+            message: message.to_string(),
+        };
+        e.report("");
+        e
+    }
+
     pub fn runtime_error(token: &Token, message: &str) -> LoxResult {
         // runtime error; cite in correct expression in error message
         let e = LoxResult::LoxRuntimeError {
@@ -61,6 +71,7 @@ impl LoxResult {
         // print the appropriate error message
         match self {
             LoxResult::LoxParseError { token, message }
+            | LoxResult::LoxResolverError { token, message } 
             | LoxResult::LoxRuntimeError { token, message } => {
                 if token.is(TokenType::Eof) {
                     eprintln!("[line {}] at end: {}", token.line, message);
