@@ -156,14 +156,14 @@ impl Scanner {
 
     fn is_digit(ch: Option<char>) -> bool {
         match ch {
-            Some(c) => ('0'..='9').contains(&c),
+            Some(c) => c.is_ascii_digit(),
             None => false,
         }
     }
 
     fn is_alpha(ch: Option<char>) -> bool {
         match ch {
-            Some(c) => ('a'..='z').contains(&c) || ('A'..='Z').contains(&c) || (c == '_'),
+            Some(c) => c.is_ascii_lowercase() || c.is_ascii_uppercase() || (c == '_'),
             None => false,
         }
     }

@@ -1,32 +1,86 @@
 use std::rc::Rc;
+use std::hash::{Hash, Hasher};
 use crate::error::*;
 use crate::token::*;
 use crate::expr::*;
 
 pub enum Stmt {
-    Break(BreakStmt),
-    Block(BlockStmt),
-    Expression(ExpressionStmt),
-    Function(FunctionStmt),
-    If(IfStmt),
-    Print(PrintStmt),
-    Return(ReturnStmt),
-    Var(VarStmt),
-    While(WhileStmt),
+    Break(Rc<BreakStmt>),
+    Block(Rc<BlockStmt>),
+    Expression(Rc<ExpressionStmt>),
+    Function(Rc<FunctionStmt>),
+    If(Rc<IfStmt>),
+    Print(Rc<PrintStmt>),
+    Return(Rc<ReturnStmt>),
+    Var(Rc<VarStmt>),
+    While(Rc<WhileStmt>),
+}
+
+impl PartialEq for Stmt {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Stmt::Break(a), Stmt::Break(b)) => Rc::ptr_eq(a, b),
+            (Stmt::Block(a), Stmt::Block(b)) => Rc::ptr_eq(a, b),
+            (Stmt::Expression(a), Stmt::Expression(b)) => Rc::ptr_eq(a, b),
+            (Stmt::Function(a), Stmt::Function(b)) => Rc::ptr_eq(a, b),
+            (Stmt::If(a), Stmt::If(b)) => Rc::ptr_eq(a, b),
+            (Stmt::Print(a), Stmt::Print(b)) => Rc::ptr_eq(a, b),
+            (Stmt::Return(a), Stmt::Return(b)) => Rc::ptr_eq(a, b),
+            (Stmt::Var(a), Stmt::Var(b)) => Rc::ptr_eq(a, b),
+            (Stmt::While(a), Stmt::While(b)) => Rc::ptr_eq(a, b),
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Stmt {}
+
+impl Hash for Stmt {
+    fn hash<H>(&self, hasher: &mut H) where H: Hasher {
+        match self {
+            Stmt::Break(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::Block(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::Expression(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::Function(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::If(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::Print(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::Return(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::Var(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::While(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+        }
+    }
 }
 
 impl Stmt {
-    pub fn accept<T>(&self, wrapper: &Rc<Stmt>, stmt_visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
+    pub fn accept<T>(&self, wrapper: Rc<Stmt>, stmt_visitor: &dyn StmtVisitor<T>) -> Result<T, LoxResult> {
         match self {
-            Stmt::Break(v) => stmt_visitor.visit_break_stmt(wrapper, &v),
-            Stmt::Block(v) => stmt_visitor.visit_block_stmt(wrapper, &v),
-            Stmt::Expression(v) => stmt_visitor.visit_expression_stmt(wrapper, &v),
-            Stmt::Function(v) => stmt_visitor.visit_function_stmt(wrapper, &v),
-            Stmt::If(v) => stmt_visitor.visit_if_stmt(wrapper, &v),
-            Stmt::Print(v) => stmt_visitor.visit_print_stmt(wrapper, &v),
-            Stmt::Return(v) => stmt_visitor.visit_return_stmt(wrapper, &v),
-            Stmt::Var(v) => stmt_visitor.visit_var_stmt(wrapper, &v),
-            Stmt::While(v) => stmt_visitor.visit_while_stmt(wrapper, &v),
+            Stmt::Break(v) => stmt_visitor.visit_break_stmt(wrapper, v),
+            Stmt::Block(v) => stmt_visitor.visit_block_stmt(wrapper, v),
+            Stmt::Expression(v) => stmt_visitor.visit_expression_stmt(wrapper, v),
+            Stmt::Function(v) => stmt_visitor.visit_function_stmt(wrapper, v),
+            Stmt::If(v) => stmt_visitor.visit_if_stmt(wrapper, v),
+            Stmt::Print(v) => stmt_visitor.visit_print_stmt(wrapper, v),
+            Stmt::Return(v) => stmt_visitor.visit_return_stmt(wrapper, v),
+            Stmt::Var(v) => stmt_visitor.visit_var_stmt(wrapper, v),
+            Stmt::While(v) => stmt_visitor.visit_while_stmt(wrapper, v),
         }
     }
 }
@@ -75,14 +129,14 @@ pub struct WhileStmt {
 }
 
 pub trait StmtVisitor<T> {
-    fn visit_break_stmt(&self, wrapper: &Rc<Stmt>, stmt: &BreakStmt) -> Result<T, LoxResult>;
-    fn visit_block_stmt(&self, wrapper: &Rc<Stmt>, stmt: &BlockStmt) -> Result<T, LoxResult>;
-    fn visit_expression_stmt(&self, wrapper: &Rc<Stmt>, stmt: &ExpressionStmt) -> Result<T, LoxResult>;
-    fn visit_function_stmt(&self, wrapper: &Rc<Stmt>, stmt: &FunctionStmt) -> Result<T, LoxResult>;
-    fn visit_if_stmt(&self, wrapper: &Rc<Stmt>, stmt: &IfStmt) -> Result<T, LoxResult>;
-    fn visit_print_stmt(&self, wrapper: &Rc<Stmt>, stmt: &PrintStmt) -> Result<T, LoxResult>;
-    fn visit_return_stmt(&self, wrapper: &Rc<Stmt>, stmt: &ReturnStmt) -> Result<T, LoxResult>;
-    fn visit_var_stmt(&self, wrapper: &Rc<Stmt>, stmt: &VarStmt) -> Result<T, LoxResult>;
-    fn visit_while_stmt(&self, wrapper: &Rc<Stmt>, stmt: &WhileStmt) -> Result<T, LoxResult>;
+    fn visit_break_stmt(&self, wrapper: Rc<Stmt>, stmt: &BreakStmt) -> Result<T, LoxResult>;
+    fn visit_block_stmt(&self, wrapper: Rc<Stmt>, stmt: &BlockStmt) -> Result<T, LoxResult>;
+    fn visit_expression_stmt(&self, wrapper: Rc<Stmt>, stmt: &ExpressionStmt) -> Result<T, LoxResult>;
+    fn visit_function_stmt(&self, wrapper: Rc<Stmt>, stmt: &FunctionStmt) -> Result<T, LoxResult>;
+    fn visit_if_stmt(&self, wrapper: Rc<Stmt>, stmt: &IfStmt) -> Result<T, LoxResult>;
+    fn visit_print_stmt(&self, wrapper: Rc<Stmt>, stmt: &PrintStmt) -> Result<T, LoxResult>;
+    fn visit_return_stmt(&self, wrapper: Rc<Stmt>, stmt: &ReturnStmt) -> Result<T, LoxResult>;
+    fn visit_var_stmt(&self, wrapper: Rc<Stmt>, stmt: &VarStmt) -> Result<T, LoxResult>;
+    fn visit_while_stmt(&self, wrapper: Rc<Stmt>, stmt: &WhileStmt) -> Result<T, LoxResult>;
 }
 

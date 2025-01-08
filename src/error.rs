@@ -14,10 +14,9 @@ pub enum LoxResult {
 
 impl LoxResult {
     pub fn return_value(value: Object) -> LoxResult {
-        let v = LoxResult::Return {
+        LoxResult::Return {
             value,
-        };
-        v
+        }
     }
 
     pub fn error(line: usize, message: &str) -> LoxResult {

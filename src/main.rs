@@ -13,7 +13,7 @@ mod token_type;
 mod callable;
 mod native_functions;
 mod lox_function;
-// mod resolver;
+mod resolver;
 
 use error::*;
 use interpreter::*;
