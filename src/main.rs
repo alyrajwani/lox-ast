@@ -1,5 +1,6 @@
 use std::env::args;
 use std::io::{self, stdout, BufRead, Write};
+use std::rc::Rc;
 
 mod environment;
 mod error;
@@ -19,6 +20,7 @@ use error::*;
 use interpreter::*;
 use parser::*;
 use scanner::*;
+use resolver::*;
 
 pub fn main() {
     let args: Vec<String> = args().collect();
@@ -79,7 +81,10 @@ impl Lox {
         let statements = parser.parse()?;
 
         if parser.success() {
-            self.interpreter.interpret(&statements);
+            let resolver = Resolver::new(&self.interpreter);
+            let s = Rc::new(statements);
+            resolver.resolve(Rc::clone(&s))?;
+            self.interpreter.interpret(&Rc::clone(&s));
         }
         Ok(())
     }
