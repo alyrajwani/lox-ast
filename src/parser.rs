@@ -81,7 +81,7 @@ impl Parser<'_> {
     }
 
     fn break_statement(&mut self) -> Result<Stmt, LoxResult> {
-        let token = self.peek().duplicate();
+        let token = self.previous().duplicate();
         self.consume(
             TokenType::Semicolon,
             "Expect ';' after 'break'.",
