@@ -1,5 +1,6 @@
 use crate::token_type::*;
 use crate::callable::*;
+use crate::lox_class::*;
 use std::cmp::*;
 use std::fmt;
 use std::ops::*;
@@ -11,6 +12,7 @@ pub enum Object {
     Str(String),
     Bool(bool),
     Function(Callable),
+    Class(LoxClass),
     Nil,
     ErrorMessage(String),
 }
@@ -28,6 +30,7 @@ impl fmt::Display for Object {
                 }
             }
             Object::Function(_) => write!(f, "<func>"),
+            Object::Class(c) => write!(f, "<Class {}>", c.to_string()),
             Object::Nil => write!(f, "nil"),
             Object::ErrorMessage(_) => panic!("Do not print upon error."),
         }

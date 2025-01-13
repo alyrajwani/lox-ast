@@ -4,6 +4,7 @@ use crate::error::*;
 use crate::expr::*;
 use crate::native_functions::*;
 use crate::lox_function::*;
+use crate::lox_class::*;
 use crate::stmt::*;
 use crate::token::*;
 use crate::token_type::*;
@@ -18,7 +19,14 @@ pub struct Interpreter {
 }
 
 impl StmtVisitor<()> for Interpreter {
-    fn visit_return_stmt(&self, _ : Rc<Stmt>, stmt: &ReturnStmt) -> Result<(), LoxResult> {
+    fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
+        self.environment.borrow().borrow_mut().define(stmt.name.as_string(), Object::Nil);
+        let klass = Object::Class(LoxClass::new(stmt.name.as_string()));
+        self.environment.borrow().borrow_mut().assign(&stmt.name, klass)?;
+        Ok(())
+    }
+
+    fn visit_return_stmt(&self, _: Rc<Stmt>, stmt: &ReturnStmt) -> Result<(), LoxResult> {
         if let Some(value) = stmt.value.clone() {
             Err(LoxResult::return_value(self.evaluate(value)?))
         } else { 

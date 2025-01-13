@@ -22,6 +22,11 @@ enum FunctionType {
 }
 
 impl StmtVisitor<()> for Resolver<'_> {
+    fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
+        self.declare(&stmt.name);
+        self.define(&stmt.name);
+        Ok(())
+    }
     fn visit_return_stmt(&self, _: Rc<Stmt>, stmt: &ReturnStmt) -> Result<(), LoxResult> {
         if *self.current_function.borrow() == FunctionType::None {
             self.error(&stmt.keyword, "Can't return from top-level code.");

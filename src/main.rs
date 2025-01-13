@@ -14,6 +14,7 @@ mod token_type;
 mod callable;
 mod native_functions;
 mod lox_function;
+mod lox_class;
 mod resolver;
 
 use error::*;

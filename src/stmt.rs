@@ -7,6 +7,7 @@ use crate::expr::*;
 pub enum Stmt {
     Break(Rc<BreakStmt>),
     Block(Rc<BlockStmt>),
+    Class(Rc<ClassStmt>),
     Expression(Rc<ExpressionStmt>),
     Function(Rc<FunctionStmt>),
     If(Rc<IfStmt>),
@@ -21,6 +22,7 @@ impl PartialEq for Stmt {
         match (self, other) {
             (Stmt::Break(a), Stmt::Break(b)) => Rc::ptr_eq(a, b),
             (Stmt::Block(a), Stmt::Block(b)) => Rc::ptr_eq(a, b),
+            (Stmt::Class(a), Stmt::Class(b)) => Rc::ptr_eq(a, b),
             (Stmt::Expression(a), Stmt::Expression(b)) => Rc::ptr_eq(a, b),
             (Stmt::Function(a), Stmt::Function(b)) => Rc::ptr_eq(a, b),
             (Stmt::If(a), Stmt::If(b)) => Rc::ptr_eq(a, b),
@@ -42,6 +44,9 @@ impl Hash for Stmt {
                 hasher.write_usize(Rc::as_ptr(a) as usize);
             }
             Stmt::Block(a) => {
+                hasher.write_usize(Rc::as_ptr(a) as usize);
+            }
+            Stmt::Class(a) => {
                 hasher.write_usize(Rc::as_ptr(a) as usize);
             }
             Stmt::Expression(a) => {
@@ -74,6 +79,7 @@ impl Stmt {
         match self {
             Stmt::Break(v) => stmt_visitor.visit_break_stmt(wrapper, v),
             Stmt::Block(v) => stmt_visitor.visit_block_stmt(wrapper, v),
+            Stmt::Class(v) => stmt_visitor.visit_class_stmt(wrapper, v),
             Stmt::Expression(v) => stmt_visitor.visit_expression_stmt(wrapper, v),
             Stmt::Function(v) => stmt_visitor.visit_function_stmt(wrapper, v),
             Stmt::If(v) => stmt_visitor.visit_if_stmt(wrapper, v),
@@ -91,6 +97,11 @@ pub struct BreakStmt {
 
 pub struct BlockStmt {
     pub statements: Rc<Vec<Rc<Stmt>>>,
+}
+
+pub struct ClassStmt {
+    pub name: Token,
+    pub methods: Rc<Vec<Rc<Stmt>>>,
 }
 
 pub struct ExpressionStmt {
@@ -131,6 +142,7 @@ pub struct WhileStmt {
 pub trait StmtVisitor<T> {
     fn visit_break_stmt(&self, wrapper: Rc<Stmt>, stmt: &BreakStmt) -> Result<T, LoxResult>;
     fn visit_block_stmt(&self, wrapper: Rc<Stmt>, stmt: &BlockStmt) -> Result<T, LoxResult>;
+    fn visit_class_stmt(&self, wrapper: Rc<Stmt>, stmt: &ClassStmt) -> Result<T, LoxResult>;
     fn visit_expression_stmt(&self, wrapper: Rc<Stmt>, stmt: &ExpressionStmt) -> Result<T, LoxResult>;
     fn visit_function_stmt(&self, wrapper: Rc<Stmt>, stmt: &FunctionStmt) -> Result<T, LoxResult>;
     fn visit_if_stmt(&self, wrapper: Rc<Stmt>, stmt: &IfStmt) -> Result<T, LoxResult>;
