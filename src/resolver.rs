@@ -10,9 +10,10 @@ use std::collections::HashMap;
 pub struct Resolver<'a> {
     interpreter: &'a Interpreter,
     scopes: RefCell<Vec<RefCell<HashMap<String, bool>>>>,
+    had_error: RefCell<bool>,
 }
 
-impl<'a> StmtVisitor<()> for Resolver<'a> {
+impl StmtVisitor<()> for Resolver<'_> {
     fn visit_return_stmt(&self, _: Rc<Stmt>, stmt: &ReturnStmt) -> Result<(), LoxResult> {
         if let Some(value) = stmt.value.clone() {
             self.resolve_expr(value)?;
@@ -66,7 +67,7 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
     }
 }
 
-impl<'a> ExprVisitor<()> for Resolver<'a> {
+impl ExprVisitor<()> for Resolver<'_> {
     fn visit_call_expr(&self, _: Rc<Expr>, expr: &CallExpr) -> Result<(), LoxResult> { 
         self.resolve_expr(expr.callee.clone())?;
         for argument in expr.arguments.iter() {
@@ -122,7 +123,8 @@ impl<'a> Resolver<'a> {
     pub fn new(interpreter: &'a Interpreter) -> Resolver<'a> {
         Resolver { 
             interpreter, 
-            scopes: RefCell::new(Vec::new()) 
+            scopes: RefCell::new(Vec::new()),
+            had_error: RefCell::new(false),
         }
     }
 
@@ -131,6 +133,10 @@ impl<'a> Resolver<'a> {
             self.resolve_stmt(statement.clone())?;
         }
         Ok(())
+    }
+
+    pub fn success(&self) -> bool {
+        !*self.had_error.borrow()
     }
 
     fn resolve_stmt(&self, stmt: Rc<Stmt>) -> Result<(), LoxResult> {
@@ -146,24 +152,17 @@ impl<'a> Resolver<'a> {
     }
 
     fn declare(&self, name: &Token) {
-        if !self.scopes.borrow().is_empty() {
-            self.scopes
-                .borrow()
-                .last()
-                .unwrap()
-                .borrow_mut()
-                .insert(name.as_string().into(), false);
+        if let Some(scope) = self.scopes.borrow().last() {
+            if scope.borrow().contains_key(name.as_string()) {
+                self.error(name, "Already a variable with this name in this scope");
+            }
+            scope.borrow_mut().insert(name.as_string().into(), false);
         }
     }
 
     fn define(&self, name: &Token) {
-        if !self.scopes.borrow().is_empty() {
-            self.scopes
-                .borrow()
-                .last()
-                .unwrap()
-                .borrow_mut()
-                .insert(name.as_string().into(), true);
+        if let Some(scope) = self.scopes.borrow().last() {
+            scope.borrow_mut().insert(name.as_string().into(), true);
         }
     }
 
@@ -193,5 +192,10 @@ impl<'a> Resolver<'a> {
 
         self.end_scope();
         Ok(())
+    }
+
+    fn error(&self, token: &Token, message: &str) {
+        self.had_error.replace(true);
+        LoxResult::runtime_error(token, message);
     }
 }
