@@ -21,7 +21,7 @@ pub struct Interpreter {
 impl StmtVisitor<()> for Interpreter {
     fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
         self.environment.borrow().borrow_mut().define(stmt.name.as_string(), Object::Nil);
-        let klass = Object::Class(LoxClass::new(stmt.name.as_string()));
+        let klass = Object::Class(Rc::new(LoxClass::new(stmt.name.as_string())));
         self.environment.borrow().borrow_mut().assign(&stmt.name, klass)?;
         Ok(())
     }
@@ -108,15 +108,23 @@ impl ExprVisitor<Object> for Interpreter {
         if let Object::Function(function) = callee {
             if arguments.len() != function.func.arity() {
                 return Err(LoxResult::runtime_error(
-                    &expr.paren,
-                    &format!("Expected {} arguments but got {}.", function.func.arity(), arguments.len()),
+                        &expr.paren,
+                        &format!("Expected {} arguments but got {}.", function.func.arity(), arguments.len()),
                 ));
             }
             function.func.call(self, arguments)
+        } else if let Object::Class(klass) = callee {
+            if arguments.len() != klass.arity() {
+                return Err(LoxResult::runtime_error(
+                        &expr.paren,
+                        &format!("Expected {} arguments but got {}.", klass.arity(), arguments.len()),
+                ));
+            }
+            klass.instantiate(self, arguments, Rc::clone(&klass))
         } else {
             Err(LoxResult::runtime_error(
-                &expr.paren,
-                "Can only call functions and classes.",
+                    &expr.paren,
+                    "Can only call functions and classes.",
             ))
         }
     }
@@ -128,8 +136,8 @@ impl ExprVisitor<Object> for Interpreter {
                 .borrow()
                 .borrow_mut()
                 .assign_at(*distance, &expr.name, value.clone())?;
-        } else {
-            self.globals.borrow_mut().assign(&expr.name, value.clone())?
+            } else {
+                self.globals.borrow_mut().assign(&expr.name, value.clone())?
         }
 
         Ok(value)
@@ -231,12 +239,12 @@ impl Interpreter {
     fn execute(&self, stmt: Rc<Stmt>) -> Result<(), LoxResult> {
         stmt.accept(stmt.clone(), self)
     }
-   
+
     pub fn resolve(&self, expr: Rc<Expr>, depth: usize) -> Result<(), LoxResult> {
         self.locals.borrow_mut().insert(expr, depth);
         Ok(())
     }
-    
+
     pub fn execute_block(
         &self,
         statements: &Rc<Vec<Rc<Stmt>>>,
@@ -266,7 +274,7 @@ impl Interpreter {
             (Object::Str(x), Object::Str(y)) => Ok(x == y),
             (Object::Bool(x), Object::Bool(y)) => Ok(x == y),
             _ => Err(Object::ErrorMessage(
-                "Cannot compare objects of different types.".to_string(),
+                    "Cannot compare objects of different types.".to_string(),
             )),
         }
     }

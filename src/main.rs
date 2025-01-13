@@ -13,6 +13,7 @@ mod token;
 mod token_type;
 mod callable;
 mod native_functions;
+mod lox_instance;
 mod lox_function;
 mod lox_class;
 mod resolver;
