@@ -11,6 +11,7 @@ use crate::token_type::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::collections::HashMap;
+use std::ops::Deref;
 
 pub struct Interpreter {
     pub globals: Rc<RefCell<Environment>>,
@@ -21,7 +22,19 @@ pub struct Interpreter {
 impl StmtVisitor<()> for Interpreter {
     fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
         self.environment.borrow().borrow_mut().define(stmt.name.as_string(), Object::Nil);
-        let klass = Object::Class(Rc::new(LoxClass::new(stmt.name.as_string())));
+        
+        let mut methods = HashMap::new();
+        for method in stmt.methods.deref() {
+            if let Stmt::Function(method) = method.deref() {
+                let function = Object::Function(Callable { func: Rc::new(LoxFunction::new(method, &self.environment.borrow())) } );
+                methods.insert(method.name.as_string().to_string(), function);
+            } else {
+                panic!("Class method is not a function.");
+            }
+        }
+
+        let klass = Object::Class(Rc::new(LoxClass::new(stmt.name.as_string(), methods)));
+
         self.environment.borrow().borrow_mut().assign(&stmt.name, klass)?;
         Ok(())
     }

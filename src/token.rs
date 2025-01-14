@@ -32,7 +32,7 @@ impl fmt::Display for Object {
                     write!(f, "false")
                 }
             }
-            Object::Function(fu) => write!(f, "<Function {}>", fu.to_string()),
+            Object::Function(fu) => write!(f, "<Function {}>", fu),
             Object::Class(c) => write!(f, "<Class {}>", c.to_string()),
             Object::Instance(i) => write!(f, "<Instance of {}>", i.klass.to_string()),
             Object::Nil => write!(f, "nil"),

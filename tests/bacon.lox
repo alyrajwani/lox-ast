@@ -1,0 +1,7 @@
+class Bacon {
+  eat(arg) {
+    print "I like my bacon " + arg + "!";
+  }
+}
+
+Bacon().eat("cripsy"); 
