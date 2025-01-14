@@ -128,6 +128,12 @@ impl ExprVisitor<()> for Resolver<'_> {
         Ok(()) 
     }
 
+    fn visit_set_expr(&self, _: Rc<Expr>, expr: &SetExpr) -> Result<(), LoxResult> {
+        self.resolve_expr(expr.value.clone())?;
+        self.resolve_expr(expr.object.clone())?;
+        Ok(())
+    }
+
     fn visit_grouping_expr(&self, _: Rc<Expr>, expr: &GroupingExpr) -> Result<(), LoxResult> { 
         self.resolve_expr(expr.expression.clone())?;
         Ok(()) 

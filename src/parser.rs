@@ -289,6 +289,12 @@ impl Parser<'_> {
                     name: expr.name.duplicate(),
                     value: Rc::new(value),
                 })));
+            } else if let Expr::Get(expr) = expr {
+                return Ok(Expr::Set(Rc::new(SetExpr {
+                    object: Rc::clone(&expr.object), 
+                    name: expr.name.duplicate(),
+                    value: Rc::new(value),
+                })))
             }
 
             self.error(&equals, "Invalid assignment target.");

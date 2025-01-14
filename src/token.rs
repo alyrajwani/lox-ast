@@ -15,7 +15,7 @@ pub enum Object {
     Bool(bool),
     Function(Callable),
     Class(Rc<LoxClass>),
-    Instance(LoxInstance),
+    Instance(Rc<LoxInstance>),
     Nil,
     ErrorMessage(String),
 }
