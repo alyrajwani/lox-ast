@@ -129,6 +129,18 @@ impl ExprVisitor<Object> for Interpreter {
         }
     }
 
+    fn visit_get_expr(&self, _: Rc<Expr>, expr: &GetExpr) -> Result<Object, LoxResult> {
+        let object = self.evaluate(expr.object.clone())?;
+        if let Object::Instance(instance) = object {
+            Ok(instance.get(&expr.name)?)
+        } else {
+            Err(LoxResult::runtime_error(
+                    &expr.name,
+                    "Only instances have properties.",
+            ))
+        }
+    }
+
     fn visit_assign_expr(&self, wrapper: Rc<Expr>, expr: &AssignExpr) -> Result<Object, LoxResult> {
         let value = self.evaluate(expr.value.clone())?;
         if let Some(distance) = self.locals.borrow().get(&wrapper) {

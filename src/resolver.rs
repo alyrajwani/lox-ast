@@ -27,6 +27,7 @@ impl StmtVisitor<()> for Resolver<'_> {
         self.define(&stmt.name);
         Ok(())
     }
+    
     fn visit_return_stmt(&self, _: Rc<Stmt>, stmt: &ReturnStmt) -> Result<(), LoxResult> {
         if *self.current_function.borrow() == FunctionType::None {
             self.error(&stmt.keyword, "Can't return from top-level code.");
@@ -36,6 +37,7 @@ impl StmtVisitor<()> for Resolver<'_> {
         }
         Ok(())
     }
+    
     fn visit_function_stmt(&self, _: Rc<Stmt>, stmt: &FunctionStmt) -> Result<(), LoxResult> {
         self.declare(&stmt.name);
         self.define(&stmt.name);
@@ -44,22 +46,26 @@ impl StmtVisitor<()> for Resolver<'_> {
         Ok(())
 
     }
+    
     fn visit_break_stmt(&self, _: Rc<Stmt>, stmt: &BreakStmt) -> Result<(), LoxResult> {
         if !*self.in_loop.borrow() {
             self.error(&stmt.token, "Can't break from top-level code.");
         }
         Ok(())
     }
+    
     fn visit_block_stmt(&self, _: Rc<Stmt>, stmt: &BlockStmt) -> Result<(), LoxResult> {
         self.begin_scope();
         self.resolve(stmt.statements.clone())?;
         self.end_scope();
         Ok(())
     }
+    
     fn visit_expression_stmt(&self, _: Rc<Stmt>, stmt: &ExpressionStmt) -> Result<(), LoxResult> {
         self.resolve_expr(stmt.expression.clone())?;
         Ok(())
     }
+    
     fn visit_if_stmt(&self, _: Rc<Stmt>, stmt: &IfStmt) -> Result<(), LoxResult> {
         self.resolve_expr(stmt.condition.clone())?;
         self.resolve_stmt(stmt.then_branch.clone())?;
@@ -68,10 +74,12 @@ impl StmtVisitor<()> for Resolver<'_> {
         }
         Ok(())
     }
+
     fn visit_print_stmt(&self, _: Rc<Stmt>, stmt: &PrintStmt) -> Result<(), LoxResult> {
         self.resolve_expr(stmt.expression.clone())?;
         Ok(())
     }
+    
     fn visit_var_stmt(&self, _: Rc<Stmt>, stmt: &VarStmt) -> Result<(), LoxResult> {
         self.declare(&stmt.name);
         if let Some(initializer) = &stmt.initializer {
@@ -80,6 +88,7 @@ impl StmtVisitor<()> for Resolver<'_> {
         self.define(&stmt.name);
         Ok(())
     }
+    
     fn visit_while_stmt(&self, _: Rc<Stmt>, stmt: &WhileStmt) -> Result<(), LoxResult> {
         let previous_nesting = self.in_loop.replace(true);
         self.resolve_expr(stmt.condition.clone())?;
@@ -97,32 +106,44 @@ impl ExprVisitor<()> for Resolver<'_> {
         }
         Ok(()) 
     }
+
+    fn visit_get_expr(&self, _: Rc<Expr>, expr: &GetExpr) -> Result<(), LoxResult> {
+        self.resolve_expr(expr.object.clone())?;
+        Ok(())
+    }
+
     fn visit_assign_expr(&self, wrapper: Rc<Expr>, expr: &AssignExpr) -> Result<(), LoxResult> { 
         self.resolve_expr(expr.value.clone())?;
         self.resolve_local(wrapper, &expr.name)?;
         Ok(())
     }
+
     fn visit_literal_expr(&self, _: Rc<Expr>, _: &LiteralExpr) -> Result<(), LoxResult> { 
         Ok(()) 
     }
+
     fn visit_logical_expr(&self, _: Rc<Expr>, expr: &LogicalExpr) -> Result<(), LoxResult> { 
         self.resolve_expr(expr.left.clone())?;
         self.resolve_expr(expr.right.clone())?;
         Ok(()) 
     }
+
     fn visit_grouping_expr(&self, _: Rc<Expr>, expr: &GroupingExpr) -> Result<(), LoxResult> { 
         self.resolve_expr(expr.expression.clone())?;
         Ok(()) 
     }
+
     fn visit_binary_expr(&self, _: Rc<Expr>, expr: &BinaryExpr) -> Result<(), LoxResult> { 
         self.resolve_expr(expr.left.clone())?;
         self.resolve_expr(expr.right.clone())?;
         Ok(()) 
     }
+
     fn visit_unary_expr(&self, _: Rc<Expr>, expr: &UnaryExpr) -> Result<(), LoxResult> { 
         self.resolve_expr(expr.right.clone())?;
         Ok(()) 
     }
+
     fn visit_variable_expr(&self, wrapper: Rc<Expr>, expr: &VariableExpr) -> Result<(), LoxResult> {
         if !self.scopes.borrow().is_empty() 
             && self.scopes

@@ -28,9 +28,10 @@ impl LoxCallable for LoxClass {
     fn arity(&self) -> usize {
         0
     } 
+}
 
+impl std::string::ToString for LoxClass {
     fn to_string(&self) -> String {
         self.name.clone()
     }
 }
-
