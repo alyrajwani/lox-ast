@@ -51,7 +51,16 @@ impl LoxFunction {
         } 
     }
 
-
+    pub fn bind(&self, instance: &Object) -> Object {
+        let environment = RefCell::new(Environment::new_with_enclosing(Rc::clone(&self.closure)));
+        environment.borrow_mut().define("this", instance.clone());
+        Object::Function(Rc::new(LoxFunction {
+            name: self.name.duplicate(),
+            params: Rc::clone(&self.params),
+            body: Rc::clone(&self.body),
+            closure: Rc::new(environment),
+        }))
+    }
 }
 
 impl LoxCallable for LoxFunction {

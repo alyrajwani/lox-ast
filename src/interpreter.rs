@@ -115,6 +115,10 @@ impl StmtVisitor<()> for Interpreter {
 }
 
 impl ExprVisitor<Object> for Interpreter {
+    fn visit_this_expr(&self, wrapper: Rc<Expr>, expr: &ThisExpr) -> Result<Object, LoxResult> {
+        self.look_up_variable(&expr.keyword, wrapper)
+    }
+
     fn visit_call_expr(&self, _: Rc<Expr>, expr: &CallExpr) -> Result<Object, LoxResult> {
         let callee = self.evaluate(expr.callee.clone())?;
 
@@ -122,56 +126,56 @@ impl ExprVisitor<Object> for Interpreter {
         for argument in expr.arguments.clone() {
             arguments.push(self.evaluate(argument)?);
         }
-/*
-        let callfunc: Option<Rc<dyn LoxCallable>> = match callee {
-            Object::Function(f) => Some(f),
-            Object::Class(f) => Some(f),
-            _ => None,
-        };
+        /*
+           let callfunc: Option<Rc<dyn LoxCallable>> = match callee {
+           Object::Function(f) => Some(f),
+           Object::Class(f) => Some(f),
+           _ => None,
+           };
 
-        if let Some(callfunc) = callfunc {
-            if arguments.len() != callfunc.arity() {
-                return Err(LoxResult::runtime_error(
-                        &expr.paren,
-                        &format!("Expected {} arguments but got {}.", callfunc.arity(), arguments.len()),
-                ))
-            };
-            callfunc.call(self, arguments)
-        } else {
-            Err(LoxResult::runtime_error(
-                    &expr.paren,
-                    "Can only call functions and classes.",
-            ))
-        }
-        */
-           if let Object::Function(function) = callee {
-           if arguments.len() != function.arity() {
+           if let Some(callfunc) = callfunc {
+           if arguments.len() != callfunc.arity() {
            return Err(LoxResult::runtime_error(
            &expr.paren,
-           &format!("Expected {} arguments but got {}.", function.arity(), arguments.len()),
-           ));
-           }
-           function.call(self, arguments)
-           } else if let Object::Class(klass) = callee {
-           if arguments.len() != klass.arity() {
-           return Err(LoxResult::runtime_error(
-           &expr.paren,
-           &format!("Expected {} arguments but got {}.", klass.arity(), arguments.len()),
-           ));
-           }
-           klass.instantiate(self, arguments, Rc::clone(&klass))
+           &format!("Expected {} arguments but got {}.", callfunc.arity(), arguments.len()),
+           ))
+           };
+           callfunc.call(self, arguments)
            } else {
            Err(LoxResult::runtime_error(
            &expr.paren,
            "Can only call functions and classes.",
            ))
            }
+           */
+        if let Object::Function(function) = callee {
+            if arguments.len() != function.arity() {
+                return Err(LoxResult::runtime_error(
+                        &expr.paren,
+                        &format!("Expected {} arguments but got {}.", function.arity(), arguments.len()),
+                ));
+            }
+            function.call(self, arguments)
+        } else if let Object::Class(klass) = callee {
+            if arguments.len() != klass.arity() {
+                return Err(LoxResult::runtime_error(
+                        &expr.paren,
+                        &format!("Expected {} arguments but got {}.", klass.arity(), arguments.len()),
+                ));
+            }
+            klass.instantiate(self, arguments, Rc::clone(&klass))
+        } else {
+            Err(LoxResult::runtime_error(
+                    &expr.paren,
+                    "Can only call functions and classes.",
+            ))
+        }
     }
 
     fn visit_get_expr(&self, _: Rc<Expr>, expr: &GetExpr) -> Result<Object, LoxResult> {
         let object = self.evaluate(expr.object.clone())?;
         if let Object::Instance(instance) = object {
-            Ok(instance.get(&expr.name)?)
+            Ok(instance.get(&expr.name, &instance)?)
         } else {
             Err(LoxResult::runtime_error(
                     &expr.name,

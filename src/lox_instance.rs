@@ -16,11 +16,15 @@ impl LoxInstance {
         LoxInstance { klass: Rc::clone(&klass), fields: RefCell::new(HashMap::new()) }
     }
 
-    pub fn get(&self, name: &Token) -> Result<Object, LoxResult> {
+    pub fn get(&self, name: &Token, this: &Rc<LoxInstance>) -> Result<Object, LoxResult> {
         if let Entry::Occupied(o) = self.fields.borrow_mut().entry(name.as_string().into()) {
             Ok(o.get().clone())
         } else if let Some(method) = self.klass.find_method(name.as_string()) { 
-            Ok(method) 
+            if let Object::Function(func) = method {
+                return Ok(func.bind(&Object::Instance(Rc::clone(this))));
+            } else {
+                panic!("Tried to bind 'this' incorrectly.")
+            }
         } else {
             Err(LoxResult::runtime_error(name, &format!("Undefined property '{}'.", name.as_string())))
         }
