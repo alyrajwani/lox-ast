@@ -22,11 +22,13 @@ pub struct Interpreter {
 impl StmtVisitor<()> for Interpreter {
     fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
         self.environment.borrow().borrow_mut().define(stmt.name.as_string(), Object::Nil);
-        
+
         let mut methods = HashMap::new();
         for method in stmt.methods.deref() {
             if let Stmt::Function(method) = method.deref() {
-                let function = Object::Function(Callable { func: Rc::new(LoxFunction::new(method, &self.environment.borrow())) } );
+                let function = Object::Function(
+                    Rc::new(LoxFunction::new(method, &self.environment.borrow()))
+                );
                 methods.insert(method.name.as_string().to_string(), function);
             } else {
                 panic!("Class method is not a function.");
@@ -49,7 +51,10 @@ impl StmtVisitor<()> for Interpreter {
 
     fn visit_function_stmt(&self, _: Rc<Stmt>, stmt: &FunctionStmt) -> Result<(), LoxResult> {
         let function = LoxFunction::new(stmt, &self.environment.borrow());
-        self.environment.borrow().borrow_mut().define(stmt.name.as_string(), Object::Function(Callable { func: Rc::new(function) }));
+        self.environment.borrow().borrow_mut().define(
+            stmt.name.as_string(), 
+            Object::Function(Rc::new(function))
+        );
         Ok(())
     }
 
@@ -117,29 +122,50 @@ impl ExprVisitor<Object> for Interpreter {
         for argument in expr.arguments.clone() {
             arguments.push(self.evaluate(argument)?);
         }
+/*
+        let callfunc: Option<Rc<dyn LoxCallable>> = match callee {
+            Object::Function(f) => Some(f),
+            Object::Class(f) => Some(f),
+            _ => None,
+        };
 
-        if let Object::Function(function) = callee {
-            if arguments.len() != function.func.arity() {
+        if let Some(callfunc) = callfunc {
+            if arguments.len() != callfunc.arity() {
                 return Err(LoxResult::runtime_error(
                         &expr.paren,
-                        &format!("Expected {} arguments but got {}.", function.func.arity(), arguments.len()),
-                ));
-            }
-            function.func.call(self, arguments)
-        } else if let Object::Class(klass) = callee {
-            if arguments.len() != klass.arity() {
-                return Err(LoxResult::runtime_error(
-                        &expr.paren,
-                        &format!("Expected {} arguments but got {}.", klass.arity(), arguments.len()),
-                ));
-            }
-            klass.instantiate(self, arguments, Rc::clone(&klass))
+                        &format!("Expected {} arguments but got {}.", callfunc.arity(), arguments.len()),
+                ))
+            };
+            callfunc.call(self, arguments)
         } else {
             Err(LoxResult::runtime_error(
                     &expr.paren,
                     "Can only call functions and classes.",
             ))
         }
+        */
+           if let Object::Function(function) = callee {
+           if arguments.len() != function.arity() {
+           return Err(LoxResult::runtime_error(
+           &expr.paren,
+           &format!("Expected {} arguments but got {}.", function.arity(), arguments.len()),
+           ));
+           }
+           function.call(self, arguments)
+           } else if let Object::Class(klass) = callee {
+           if arguments.len() != klass.arity() {
+           return Err(LoxResult::runtime_error(
+           &expr.paren,
+           &format!("Expected {} arguments but got {}.", klass.arity(), arguments.len()),
+           ));
+           }
+           klass.instantiate(self, arguments, Rc::clone(&klass))
+           } else {
+           Err(LoxResult::runtime_error(
+           &expr.paren,
+           "Can only call functions and classes.",
+           ))
+           }
     }
 
     fn visit_get_expr(&self, _: Rc<Expr>, expr: &GetExpr) -> Result<Object, LoxResult> {
@@ -195,8 +221,8 @@ impl ExprVisitor<Object> for Interpreter {
             Ok(value)
         } else {
             Err(LoxResult::runtime_error(
-                &expr.name,
-                "Only instances have fields."
+                    &expr.name,
+                    "Only instances have fields."
             ))
         }
     }
@@ -261,9 +287,7 @@ impl Interpreter {
     pub fn new() -> Interpreter {
         let globals = Rc::new(RefCell::new(Environment::new()));
 
-        globals.borrow_mut().define("clock", Object::Function(Callable {
-            func: Rc::new(NativeClock {} ),
-        }));
+        //        globals.borrow_mut().define("clock", Object::Function(Rc::new(NativeClock {})));
 
         Interpreter {
             globals: Rc::clone(&globals),

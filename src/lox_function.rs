@@ -5,6 +5,7 @@ use crate::callable::*;
 use crate::error::*;
 use crate::stmt::*;
 use std::rc::Rc;
+use std::fmt;
 use std::cell::RefCell;
 
 pub struct LoxFunction {
@@ -14,6 +15,32 @@ pub struct LoxFunction {
     closure: Rc<RefCell<Environment>>,
 }
 
+impl fmt::Debug for LoxFunction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), std::fmt::Error> { 
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl Clone for LoxFunction {
+    fn clone(&self) -> Self {
+        LoxFunction{ 
+            name: self.name.duplicate(),
+            params: Rc::clone(&self.params),
+            body: Rc::clone(&self.body),
+            closure: Rc::clone(&self.closure),
+        }
+    }
+}
+
+impl PartialEq for LoxFunction {
+    fn eq(&self, other: &Self) -> bool { 
+        self.name.token_type() == other.name.token_type() &&
+            Rc::ptr_eq(&self.params, &other.params) &&
+            Rc::ptr_eq(&self.body, &other.body) &&
+            Rc::ptr_eq(&self.closure, &other.closure)
+    }
+}
+    
 impl LoxFunction {
     pub fn new(declaration: &FunctionStmt, closure: &Rc<RefCell<Environment>>) -> LoxFunction {
         LoxFunction { 
@@ -23,6 +50,8 @@ impl LoxFunction {
             closure: Rc::clone(closure),
         } 
     }
+
+
 }
 
 impl LoxCallable for LoxFunction {

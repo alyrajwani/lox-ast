@@ -1,7 +1,8 @@
 use crate::token_type::*;
-use crate::callable::*;
+// use crate::callable::*;
 use crate::lox_instance::*;
 use crate::lox_class::*;
+use crate::lox_function::*;
 use std::cmp::*;
 use std::fmt;
 use std::rc::Rc;
@@ -13,7 +14,7 @@ pub enum Object {
     Num(f64),
     Str(String),
     Bool(bool),
-    Function(Callable),
+    Function(Rc<LoxFunction>),
     Class(Rc<LoxClass>),
     Instance(Rc<LoxInstance>),
     Nil,
@@ -32,7 +33,7 @@ impl fmt::Display for Object {
                     write!(f, "false")
                 }
             }
-            Object::Function(fu) => write!(f, "<Function {}>", fu),
+            Object::Function(fu) => write!(f, "<Function {}>", fu.to_string()),
             Object::Class(c) => write!(f, "<Class {}>", c.to_string()),
             Object::Instance(i) => write!(f, "<Instance of {}>", i.klass.to_string()),
             Object::Nil => write!(f, "nil"),
