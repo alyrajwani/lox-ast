@@ -12,6 +12,7 @@ pub struct Resolver<'a> {
     interpreter: &'a Interpreter,
     scopes: RefCell<Vec<RefCell<HashMap<String, bool>>>>,
     current_function: RefCell<FunctionType>,   
+    current_class: RefCell<ClassType>,
     in_loop: RefCell<bool>,
     had_error: RefCell<bool>,
 }
@@ -23,8 +24,16 @@ enum FunctionType {
     Method,
 }
 
+#[derive(PartialEq)]
+enum ClassType {
+    None,
+    Class,
+}
+
 impl StmtVisitor<()> for Resolver<'_> {
     fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
+        let enclosing_class = self.current_class.replace(ClassType::Class);
+
         self.declare(&stmt.name);
         self.define(&stmt.name);
            
@@ -43,6 +52,7 @@ impl StmtVisitor<()> for Resolver<'_> {
             }
         }
 
+        self.current_class.replace(enclosing_class);
         self.end_scope();
 
         Ok(())
@@ -155,7 +165,11 @@ impl ExprVisitor<()> for Resolver<'_> {
     }
 
     fn visit_this_expr(&self, wrapper: Rc<Expr>, expr: &ThisExpr) -> Result<(), LoxResult> {
-        self.resolve_local(wrapper, &expr.keyword);
+        if *self.current_class.borrow() == ClassType::None {
+            self.error(&expr.keyword, "Can't use 'this' outside of a class.");
+            return Ok(());
+        }
+        let _ = self.resolve_local(wrapper, &expr.keyword);
         Ok(())
     }
 
@@ -199,6 +213,7 @@ impl<'a> Resolver<'a> {
             interpreter, 
             scopes: RefCell::new(Vec::new()),
             current_function: RefCell::new(FunctionType::None),
+            current_class: RefCell::new(ClassType::None),
             in_loop: RefCell::new(false),
             had_error: RefCell::new(false),
         }
