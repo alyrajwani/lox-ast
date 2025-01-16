@@ -13,6 +13,7 @@ pub struct LoxFunction {
     params: Rc<Vec<Token>>,
     body: Rc<Vec<Rc<Stmt>>>,
     closure: Rc<RefCell<Environment>>,
+    is_initializer: bool,
 }
 
 impl fmt::Debug for LoxFunction {
@@ -28,6 +29,7 @@ impl Clone for LoxFunction {
             params: Rc::clone(&self.params),
             body: Rc::clone(&self.body),
             closure: Rc::clone(&self.closure),
+            is_initializer: self.is_initializer,
         }
     }
 }
@@ -40,14 +42,15 @@ impl PartialEq for LoxFunction {
             Rc::ptr_eq(&self.closure, &other.closure)
     }
 }
-    
+
 impl LoxFunction {
-    pub fn new(declaration: &FunctionStmt, closure: &Rc<RefCell<Environment>>) -> LoxFunction {
+    pub fn new(declaration: &FunctionStmt, closure: &Rc<RefCell<Environment>>, is_initializer: bool) -> LoxFunction {
         LoxFunction { 
             name: declaration.name.duplicate(),
             params: Rc::clone(&declaration.params),
             body: Rc::clone(&declaration.body),
             closure: Rc::clone(closure),
+            is_initializer,
         } 
     }
 
@@ -59,6 +62,7 @@ impl LoxFunction {
             params: Rc::clone(&self.params),
             body: Rc::clone(&self.body),
             closure: Rc::new(environment),
+            is_initializer: self.is_initializer,
         }))
     }
 }
@@ -66,21 +70,25 @@ impl LoxFunction {
 impl LoxCallable for LoxFunction {
     fn call(&self, interpreter: &Interpreter, arguments: Vec<Object>) -> Result<Object, LoxResult> {
 
-            let mut environment = Environment::new_with_enclosing(Rc::clone(&self.closure));
+        let mut environment = Environment::new_with_enclosing(Rc::clone(&self.closure));
 
-            for (param, arg) in self.params.iter().zip(arguments.iter()) {
-                environment.define(param.as_string(), arg.clone());
-            }
-            
-            match interpreter.execute_block(&self.body, environment) {
-                Err(LoxResult::Return { value }) => Ok(value),
-                Err(e) => Err(e),
-                Ok(_) => Ok(Object::Nil),
-            }
+        for (param, arg) in self.params.iter().zip(arguments.iter()) {
+            environment.define(param.as_string(), arg.clone());
+        }
+
+        match interpreter.execute_block(&self.body, environment) {
+            Err(LoxResult::Return { value }) => Ok(value),
+            Err(e) => Err(e),
+            Ok(_) => if self.is_initializer { 
+                self.closure.borrow().get_at(0, "this") 
+            } else { 
+                Ok(Object::Nil) 
+            },
+        }
     }
 
     fn arity(&self) -> usize {
-            self.params.len()
+        self.params.len()
     }
 }
 

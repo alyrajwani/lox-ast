@@ -4,6 +4,7 @@ use crate::callable::*;
 use crate::token::*;
 use crate::lox_instance::*;
 use std::rc::Rc;
+use std::fmt;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -17,8 +18,14 @@ impl LoxClass {
         LoxClass { name: name.to_owned(), methods }
     }
 
-    pub fn instantiate(&self, _interpreter: &Interpreter, _arguments: Vec<Object>, klass: Rc<LoxClass>) -> Result<Object, LoxResult> {
-        Ok(Object::Instance(Rc::new(LoxInstance::new(klass))))
+    pub fn instantiate(&self, interpreter: &Interpreter, arguments: Vec<Object>, klass: Rc<LoxClass>) -> Result<Object, LoxResult> {
+        let instance = Object::Instance(Rc::new(LoxInstance::new(klass)));
+        if let Some(Object::Function(initializer)) = self.find_method("init") {
+            if let Object::Function(init) = initializer.bind(&instance) {
+                init.call(interpreter, arguments)?;
+            }
+        }
+        Ok(instance)
     }
 
     pub fn find_method(&self, name: &str) -> Option<Object> {
@@ -32,12 +39,22 @@ impl LoxCallable for LoxClass {
     }
 
     fn arity(&self) -> usize {
-        0
-    } 
+        if let Some(Object::Function(initializer)) = self.find_method("init") {
+            initializer.arity()
+        } else {
+            0
+        }
+    }
 }
 
-impl std::string::ToString for LoxClass {
-    fn to_string(&self) -> String {
-        self.name.clone()
+impl fmt::Display for LoxClass {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let methods = self
+            .methods
+            .keys()
+            .cloned()
+            .collect::<Vec<String>>()
+            .join(", ");
+        write!(f, "<Class {} {{ {methods} }}>", self.name)
     }
 }

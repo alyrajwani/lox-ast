@@ -26,8 +26,9 @@ impl StmtVisitor<()> for Interpreter {
         let mut methods = HashMap::new();
         for method in stmt.methods.deref() {
             if let Stmt::Function(method) = method.deref() {
+                let is_initializer = method.name.as_string() == "init";
                 let function = Object::Function(
-                    Rc::new(LoxFunction::new(method, &self.environment.borrow()))
+                    Rc::new(LoxFunction::new(method, &self.environment.borrow(), is_initializer))
                 );
                 methods.insert(method.name.as_string().to_string(), function);
             } else {
@@ -50,7 +51,7 @@ impl StmtVisitor<()> for Interpreter {
     }
 
     fn visit_function_stmt(&self, _: Rc<Stmt>, stmt: &FunctionStmt) -> Result<(), LoxResult> {
-        let function = LoxFunction::new(stmt, &self.environment.borrow());
+        let function = LoxFunction::new(stmt, &self.environment.borrow(), false);
         self.environment.borrow().borrow_mut().define(
             stmt.name.as_string(), 
             Object::Function(Rc::new(function))
