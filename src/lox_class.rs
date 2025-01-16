@@ -10,12 +10,13 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoxClass {
     name: String,
+    superclass: Option<Rc<LoxClass>>,
     methods: HashMap<String, Object>
 }
 
 impl LoxClass {
-    pub fn new(name: &str, methods: HashMap<String, Object>) -> LoxClass {
-        LoxClass { name: name.to_owned(), methods }
+    pub fn new(name: &str, superclass: Option<Rc<LoxClass>>, methods: HashMap<String, Object>) -> LoxClass {
+        LoxClass { name: name.to_owned(), superclass, methods }
     }
 
     pub fn instantiate(&self, interpreter: &Interpreter, arguments: Vec<Object>, klass: Rc<LoxClass>) -> Result<Object, LoxResult> {

@@ -38,6 +38,15 @@ impl StmtVisitor<()> for Resolver<'_> {
         self.declare(&stmt.name);
         self.define(&stmt.name);
            
+        if let Some(superclass) = &stmt.superclass {
+            if let Expr::Variable(v) = &superclass.deref() {
+                if v.name.as_string() == stmt.name.as_string() {
+                    self.error(&v.name, "A class can't inherit from itself.");
+                }
+            self.resolve_expr(superclass.clone())?;
+            }
+        }
+
         self.begin_scope();
         self.scopes.borrow().last().unwrap().borrow_mut().insert("this".to_string(), true);
         

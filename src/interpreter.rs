@@ -21,6 +21,23 @@ pub struct Interpreter {
 
 impl StmtVisitor<()> for Interpreter {
     fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), LoxResult> {
+        let superclass = if let Some(superclass_expr) = &stmt.superclass {
+            let superclass = self.evaluate(superclass_expr.clone())?;
+            
+            if let Object::Class(c) = superclass {
+                Some(c)
+            } else if let Expr::Variable(v) = superclass_expr.deref() {
+                return Err(LoxResult::runtime_error(
+                    &v.name,
+                    "Superclass must be a class."
+                ));
+            } else {
+                panic!("Could not dereference superclass.")
+            }
+        } else {
+            None
+        };
+
         self.environment.borrow().borrow_mut().define(stmt.name.as_string(), Object::Nil);
 
         let mut methods = HashMap::new();
@@ -36,7 +53,7 @@ impl StmtVisitor<()> for Interpreter {
             }
         }
 
-        let klass = Object::Class(Rc::new(LoxClass::new(stmt.name.as_string(), methods)));
+        let klass = Object::Class(Rc::new(LoxClass::new(stmt.name.as_string(), superclass, methods)));
 
         self.environment.borrow().borrow_mut().assign(&stmt.name, klass)?;
         Ok(())
