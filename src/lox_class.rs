@@ -22,7 +22,7 @@ impl LoxClass {
         let instance = Object::Instance(Rc::new(LoxInstance::new(klass)));
         if let Some(Object::Function(initializer)) = self.find_method("init") {
             if let Object::Function(init) = initializer.bind(&instance) {
-                init.call(interpreter, arguments)?;
+                init.call(interpreter, arguments, None)?;
             }
         }
         Ok(instance)
@@ -34,8 +34,8 @@ impl LoxClass {
 }
 
 impl LoxCallable for LoxClass {
-    fn call(&self, _interpreter: &Interpreter, _arguments: Vec<Object>) -> Result<Object, LoxResult> {
-        Err(LoxResult::system_error("Tried to call a class."))
+    fn call(&self, interpreter: &Interpreter, arguments: Vec<Object>, klass: Option<Rc<LoxClass>>) -> Result<Object, LoxResult> {
+        self.instantiate(interpreter, arguments, klass.unwrap())
     }
 
     fn arity(&self) -> usize {

@@ -3,6 +3,7 @@ use crate::environment::*;
 use crate::token::*;
 use crate::callable::*;
 use crate::error::*;
+use crate::lox_class::*;
 use crate::stmt::*;
 use std::rc::Rc;
 use std::fmt;
@@ -68,7 +69,7 @@ impl LoxFunction {
 }
 
 impl LoxCallable for LoxFunction {
-    fn call(&self, interpreter: &Interpreter, arguments: Vec<Object>) -> Result<Object, LoxResult> {
+    fn call(&self, interpreter: &Interpreter, arguments: Vec<Object>, _: Option<Rc<LoxClass>>) -> Result<Object, LoxResult> {
 
         let mut environment = Environment::new_with_enclosing(Rc::clone(&self.closure));
 

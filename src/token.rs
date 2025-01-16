@@ -1,5 +1,6 @@
 use crate::token_type::*;
 // use crate::callable::*;
+use crate::native_functions::*;
 use crate::lox_instance::*;
 use crate::lox_class::*;
 use crate::lox_function::*;
@@ -17,6 +18,7 @@ pub enum Object {
     Function(Rc<LoxFunction>),
     Class(Rc<LoxClass>),
     Instance(Rc<LoxInstance>),
+    Native(Rc<LoxNative>),
     Nil,
     ErrorMessage(String),
 }
@@ -36,6 +38,7 @@ impl fmt::Display for Object {
             Object::Function(func) => write!(f, "{}", func),
             Object::Class(c) => write!(f, "{}", c),
             Object::Instance(i) => write!(f, "{}", i),
+            Object::Native(n) => write!(f, "{}", n),
             Object::Nil => write!(f, "nil"),
             Object::ErrorMessage(_) => panic!("Do not print upon error."),
         }
