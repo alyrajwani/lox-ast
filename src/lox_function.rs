@@ -18,7 +18,7 @@ pub struct LoxFunction {
 
 impl fmt::Debug for LoxFunction {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), std::fmt::Error> { 
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self)
     }
 }
 
@@ -77,7 +77,13 @@ impl LoxCallable for LoxFunction {
         }
 
         match interpreter.execute_block(&self.body, environment) {
-            Err(LoxResult::Return { value }) => Ok(value),
+            Err(LoxResult::Return { value }) => { 
+                if self.is_initializer {
+                    self.closure.borrow().get_at(0, "this") 
+                } else {
+                    Ok(value)
+                }
+            }
             Err(e) => Err(e),
             Ok(_) => if self.is_initializer { 
                 self.closure.borrow().get_at(0, "this") 
@@ -92,8 +98,9 @@ impl LoxCallable for LoxFunction {
     }
 }
 
-impl std::string::ToString for LoxFunction {
-    fn to_string(&self) -> String {
-        self.name.as_string().into()
+impl fmt::Display for LoxFunction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let paramlist = self.params.iter().map(|p| p.as_string().into()).collect::<Vec<String>>().join(", ");
+        write!(f, "<Function {}({})>", self.name.as_string(), paramlist)
     }
 }

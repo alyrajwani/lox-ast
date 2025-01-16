@@ -1,0 +1,8 @@
+class Foo {
+    init(a) {
+        this.field = a;
+    }
+}
+
+var f = Foo("Hello, init!");
+print f.field;

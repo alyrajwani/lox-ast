@@ -21,6 +21,7 @@ pub struct Resolver<'a> {
 enum FunctionType {
     None,
     Function,
+    Initializer,
     Method,
 }
 
@@ -41,8 +42,12 @@ impl StmtVisitor<()> for Resolver<'_> {
         self.scopes.borrow().last().unwrap().borrow_mut().insert("this".to_string(), true);
         
         for method in stmt.methods.deref() {
-            let declaration = FunctionType::Method;
             if let Stmt::Function(method) = method.deref() {
+                let declaration = if method.name.as_string() == "init" {
+                    FunctionType::Initializer
+                } else {
+                    FunctionType::Method
+                };
                 self.resolve_function(method, declaration)?;
             } else {
                 return Err(LoxResult::runtime_error(
@@ -63,7 +68,11 @@ impl StmtVisitor<()> for Resolver<'_> {
             self.error(&stmt.keyword, "Can't return from top-level code.");
         }
         if let Some(value) = stmt.value.clone() {
-            self.resolve_expr(value)?;
+            if *self.current_function.borrow() == FunctionType::Initializer {
+                self.error(&stmt.keyword, "Can't return a value from an initializer.")
+            } else {
+                self.resolve_expr(value)?;
+            }
         }
         Ok(())
     }

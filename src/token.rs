@@ -33,9 +33,9 @@ impl fmt::Display for Object {
                     write!(f, "false")
                 }
             }
-            Object::Function(fu) => write!(f, "<Function {}>", fu.to_string()),
-            Object::Class(c) => write!(f, "<Class {}>", c.to_string()),
-            Object::Instance(i) => write!(f, "<Instance of {}>", i.to_string()),
+            Object::Function(func) => write!(f, "{}", func),
+            Object::Class(c) => write!(f, "{}", c),
+            Object::Instance(i) => write!(f, "{}", i),
             Object::Nil => write!(f, "nil"),
             Object::ErrorMessage(_) => panic!("Do not print upon error."),
         }
